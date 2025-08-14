@@ -19,7 +19,7 @@ draw = ImageDraw.Draw(image)
 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
 
 # Draw text
-draw.text((0, 20), "Hello!", font=font, fill=255)
+draw.text((0, 20), "Hello Max!", font=font, fill=255)
 
 # Display image
 display.image(image)
