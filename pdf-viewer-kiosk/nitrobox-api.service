@@ -1,0 +1,18 @@
+[Unit]
+Description=Nitrobox PDF API (FastAPI/Uvicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=%h/nitrobox_pdf_server
+Environment=DOWNLOAD_DIR=%h/nitrobox_pdf_server/downloads
+Environment=DEFAULT_WAIT_SECONDS=120
+Environment=DEFAULT_POLL_SECONDS=5
+ExecStart=/usr/bin/env bash -lc 'cd %h/nitrobox_pdf_server && . .venv/bin/activate && uvicorn app:app --host 0.0.0.0 --port 8000'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
