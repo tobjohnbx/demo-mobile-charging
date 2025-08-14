@@ -56,32 +56,42 @@ class ChargingDisplay:
 
         self._show_image(image)
 
-    def show_pricing_info(self):
-        """Show current pricing information based on time"""
+    def show_pricing_info(self, start_time="08:00", end_time="22:00", amount=0.1000, quantity_type="MINUTE"):
+        """Show pricing information based on provided parameters
+
+        Args:
+            start_time: Start time of pricing period (e.g., "08:00")
+            end_time: End time of pricing period (e.g., "22:00")
+            amount: Price amount (0.0000 displays as FREE)
+            quantity_type: Quantity type (e.g., "MINUTE", "SECOND", "HOUR")
+        """
         image = self._create_image()
         draw = ImageDraw.Draw(image)
 
-        # Get current time to determine pricing
-        current_time = datetime.now().time()
+        # Map quantity types to shorter versions
+        quantity_mapping = {
+            "MINUTE": "min",
+            "SECOND": "sec",
+            "HOUR": "hr",
+            "KILOWATT_HOUR": "kWh",
+            "UNIT": "unit"
+        }
 
-        # Determine current pricing based on time
-        if current_time >= datetime.strptime("22:00:00", "%H:%M:%S").time() or \
-           current_time < datetime.strptime("08:00:00", "%H:%M:%S").time():
-            # Night rate (22:00 - 08:00)
+        # Get short version, fallback to original if not found
+        short_quantity = quantity_mapping.get(quantity_type.upper(), quantity_type.lower())
+
+        # Determine price display text
+        if amount == 0.0000:
             price_text = "FREE"
-            time_period = "22:00-08:00"
-            rate_info = "Night Rate"
         else:
-            # Day rate (08:00 - 22:00)
-            price_text = "€0.10/min"
-            time_period = "08:00-22:00"
-            rate_info = "Day Rate"
+            price_text = f"€{amount:.3f}/{short_quantity}"
 
-        # Display pricing information optimized for 128x64 display
-        draw.text((10, 2), "Charging Rate", font=self.font_small, fill=255)
-        draw.text((20, 20), price_text, font=self.font_large, fill=255)
-        draw.text((15, 38), f"{rate_info}", font=self.font_small, fill=255)
-        draw.text((10, 52), f"Time: {time_period}", font=self.font_tiny, fill=255)
+        time_period = f"{start_time}-{end_time}"
+
+        # Display pricing information with more space utilization
+        draw.text((15, 5), "Charging Rate", font=self.font_small, fill=255)
+        draw.text((15, 25), price_text, font=self.font_large, fill=255)
+        draw.text((10, 48), f"Active: {time_period}", font=self.font_small, fill=255)
 
         self._show_image(image)
 
