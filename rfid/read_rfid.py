@@ -26,14 +26,8 @@ def read_rfid():
     print("Hold a tag near the reader...")
     try:
         tag_id, text = reader.read()
-
-        print(f"Tag ID: {tag_id}")
-        if text:
-            print(f"Text: {text.strip()}")
-        else:
-            print("No text data on tag.")
-
         return tag_id, text
+
     except:
         # Return None if no tag is detected or read fails
         return None, None
@@ -78,6 +72,13 @@ try:
         tag_id, text = read_rfid()
 
         if should_process_tag(tag_id):
+            print(f"Tag ID: {tag_id}")
+
+            if text:
+                print(f"Text: {text.strip()}")
+            else:
+                print("No text data on tag.")
+
             # Update tracking variables
             last_tag_id = tag_id
             last_read_time = time.time()
