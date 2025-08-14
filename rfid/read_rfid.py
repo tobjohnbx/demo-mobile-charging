@@ -10,7 +10,7 @@ reader = SimpleMFRC522()
 charging_active = False
 
 # Setup for LED
-LED_PIN = 18
+LED_PIN = 17
 GPIO.setup(LED_PIN, GPIO.OUT)
 
 
