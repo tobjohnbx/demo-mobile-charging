@@ -1,3 +1,7 @@
+import os
+from dataclasses import dataclass
+
+
 @dataclass(frozen=True)
 class NitroboxConfig:
     api_url: str
