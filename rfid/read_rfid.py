@@ -23,7 +23,6 @@ def read_rfid():
     """
     Read the RFID card and return the tag ID and text
     """
-    print("Hold a tag near the reader...")
     try:
         tag_id, text = reader.read()
         return tag_id, text
@@ -68,6 +67,7 @@ def toggle_relay():
     GPIO.output(RELAY_PIN, GPIO.HIGH if charging_active else GPIO.LOW)
 
 try:
+    print("Hold a tag near the reader...")
     while True:
         tag_id, text = read_rfid()
 
@@ -86,6 +86,7 @@ try:
             set_charging_state()
             toggle_relay()
             print("-" * 30)  # Add separator between reads
+            print("Hold a tag near the reader...")
         else:
             # Small delay to prevent busy waiting
             time.sleep(0.1)
