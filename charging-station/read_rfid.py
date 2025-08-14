@@ -10,7 +10,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from display import ChargingDisplay
 from request_billing_run import create_nitrobox_billing_run
-from create_nitrobox_usage import create_nitrobox_usage
+from request_create_usage import create_nitrobox_usage
 from nitrobox_config import NitroboxConfig
 from request_bearer_token import fetch_bearer_token
 
