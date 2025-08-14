@@ -78,7 +78,7 @@ class ChargingDisplay:
             rate_info = "Day Rate"
 
         # Display pricing information with better spacing
-        draw.text((20, 8), "Charging Rate", font=self.font_large, fill=255)
+        draw.text((20, 8), "Charging Rate", font=self.font_small, fill=255)
         draw.text((35, 28), price_text, font=self.font_large, fill=255)
         draw.text((25, 45), f"{rate_info}", font=self.font_small, fill=255)
         draw.text((20, 57), f"Time: {time_period}", font=self.font_tiny, fill=255)
