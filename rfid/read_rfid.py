@@ -38,14 +38,16 @@ def set_charging_state():
         print("Start charging.")
         charging_active = True
 
-def toggle_led():
-    print("Toggling LED")
+def toggle_relay():
+    global charging_active
+    print("Toggling relay")
+    GPIO.output(RELAY_PIN, GPIO.LOW if charging_active else GPIO.HIGH)
 
 try:
     while True:
         tag_id, text = read_rfid()
         set_charging_state()
-        toggle_led()
+        toggle_relay()
 
         print("-" * 30)  # Add separator between reads
 finally:
