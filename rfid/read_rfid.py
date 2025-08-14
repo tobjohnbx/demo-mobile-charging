@@ -1,14 +1,26 @@
 # file: rfid_read_simple.py
 import RPi.GPIO as GPIO
 import time
+import requests
+import json
+import os
+from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
 
 # Use BCM pin numbering
 GPIO.setmode(GPIO.BCM)
 
+# Nitrobox API Configuration
+NITROBOX_API_URL = "https://api.nbx-stage-westeurope.nitrobox.io/v2/usages"
+NITROBOX_OAUTH_URL = "https://api.nbx-stage-westeurope.nitrobox.io/demo-mobile-charging/oauth2/token"
+NITROBOX_CLIENT_CREDENTIALS = os.getenv('NITROBOX_CLIENT_CREDENTIALS')  # Base64 encoded client credentials from environment
+NITROBOX_CONTRACT_ID = 2117046
+NITROBOX_PRODUCT_IDENT = "9788b7d9-ab3e-4d7e-a483-258d12bc5078"
+
 # Setup for RFID reader
 reader = SimpleMFRC522()
 charging_active = False
+charging_session_start = None
 
 # Setup for LED
 RELAY_PIN = 17
@@ -18,6 +30,58 @@ GPIO.setup(RELAY_PIN, GPIO.OUT)
 last_tag_id = None
 last_read_time = 0
 DEBOUNCE_TIME = 2.0  # 2 seconds cooldown between reads of the same tag
+
+def fetch_bearer_token():
+    """
+    Fetch a bearer token using OAuth2 client credentials flow
+    
+    Returns:
+        str: Bearer token if successful, None otherwise
+    """
+    if not NITROBOX_CLIENT_CREDENTIALS:
+        print("ERROR: NITROBOX_CLIENT_CREDENTIALS environment variable not set")
+        return None
+        
+    try:
+        headers = {
+            "Authorization": f"Basic {NITROBOX_CLIENT_CREDENTIALS}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        
+        params = {
+            "grant_type": "client_credentials"
+        }
+        
+        print("Fetching new bearer token from Nitrobox...")
+        
+        response = requests.post(
+            NITROBOX_OAUTH_URL,
+            headers=headers,
+            params=params,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            token_data = response.json()
+            access_token = token_data.get("access_token")
+            
+            if access_token:
+                print("✅ Successfully fetched bearer token")
+                return access_token
+            else:
+                print("❌ No access_token in response")
+                return None
+        else:
+            print(f"❌ Failed to fetch bearer token. Status: {response.status_code}")
+            print(f"   Response: {response.text}")
+            return None
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Network error when fetching bearer token: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error when fetching bearer token: {e}")
+        return None
 
 def read_rfid():
     """
@@ -53,18 +117,120 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state():
-    global charging_active
+    global charging_active, charging_session_start
+    
     if charging_active:
+        # Ending charging session
+        charging_end_time = datetime.now()
         print("Stop charging.")
+        
+        # Create usage record in Nitrobox if we have a valid session
+        if charging_session_start:
+            print(f"Charging session ended. Duration: {(charging_end_time - charging_session_start).total_seconds()/60:.2f} minutes")
+            
+            # Create usage record in Nitrobox
+            success = create_nitrobox_usage(
+                tag_id=last_tag_id,
+                charging_start_time=charging_session_start,
+                charging_end_time=charging_end_time
+            )
+            
+            if success:
+                print("Usage record successfully sent to Nitrobox")
+            else:
+                print("Failed to send usage record to Nitrobox")
+        
         charging_active = False
+        charging_session_start = None
     else:
-        print("Start charging.")
+        # Starting charging session
+        charging_session_start = datetime.now()
+        print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
 
 def toggle_relay():
     global charging_active
     print("Toggling relay")
     GPIO.output(RELAY_PIN, GPIO.HIGH if charging_active else GPIO.LOW)
+
+def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, energy_consumed_kwh=None):
+    """
+    Create a usage record in Nitrobox for the charging session
+    
+    Args:
+        tag_id: The RFID tag ID used for authentication
+        charging_start_time: DateTime when charging started
+        charging_end_time: DateTime when charging ended
+        energy_consumed_kwh: Energy consumed in kWh (optional, can be calculated later)
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    # Fetch bearer token
+    bearer_token = fetch_bearer_token()
+    if not bearer_token:
+        print("ERROR: Could not obtain bearer token. Cannot create usage record.")
+        return False
+    
+    if not NITROBOX_CONTRACT_ID:
+        print("ERROR: NITROBOX_CONTRACT_ID not configured")
+        return False
+    
+    # Calculate charging duration in seconds
+    duration_seconds = int((charging_end_time - charging_start_time).total_seconds())
+    
+    # Generate unique usage identifier
+    usage_ident = f"rfid-session-{tag_id}-{int(charging_start_time.timestamp())}"
+    
+    # Prepare the usage data according to Nitrobox API schema (matching curl example)
+    usage_data = {
+        "productIdent": NITROBOX_PRODUCT_IDENT,
+        "contractId": NITROBOX_CONTRACT_ID,
+        "usageIdent": usage_ident,
+        "unitQuantities": [
+            {
+                "unitQuantity": duration_seconds,
+                "unitQuantityType": "SECOND"
+            }
+        ],
+        "startDate": charging_start_time.isoformat() + "+01:00",
+        "endDate": charging_end_time.isoformat() + "Z",
+        "taxLocation": {
+            "country": "DE"
+        }
+    }
+    
+    
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": f"Bearer {bearer_token}"
+    }
+    
+    try:
+        print(f"Sending usage data to Nitrobox for {duration_seconds} seconds of charging...")
+        
+        response = requests.post(
+            NITROBOX_API_URL,
+            headers=headers,
+            json=usage_data,
+            timeout=30
+        )
+        
+        if response.status_code == 201:
+            print("✅ Successfully created usage record in Nitrobox")
+            return True
+        else:
+            print(f"❌ Failed to create usage record. Status: {response.status_code}")
+            print(f"   Response: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Network error when calling Nitrobox API: {e}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error when calling Nitrobox API: {e}")
+        return False
 
 try:
     print("Hold a tag near the reader...")
