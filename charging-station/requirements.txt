@@ -1,0 +1,5 @@
+mfrc522
+spidev
+RPi.GPIO
+adafruit-blinka
+adafruit-circuitpython-ssd1306
