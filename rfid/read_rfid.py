@@ -71,7 +71,7 @@ def set_charging_state():
 def toggle_relay():
     global charging_active
     print("Toggling relay")
-    GPIO.output(RELAY_PIN, GPIO.LOW if charging_active else GPIO.HIGH)
+    GPIO.output(RELAY_PIN, GPIO.HIGH if charging_active else GPIO.LOW)
 
 try:
     while True:
