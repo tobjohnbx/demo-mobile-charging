@@ -1,3 +1,7 @@
+import requests
+from datetime import datetime, timedelta
+from nitrobox_config import NitroboxConfig
+
 def create_nitrobox_billing_run(bearer_token):
     """
     Create a billing run in Nitrobox
@@ -12,7 +16,14 @@ def create_nitrobox_billing_run(bearer_token):
         print("ERROR: No bearer token provided for billing run")
         return False
 
-    if not NITROBOX_DEBTOR_IDENT:
+    # Get configuration from environment
+    try:
+        config = NitroboxConfig.from_env()
+    except RuntimeError as e:
+        print(f"ERROR: Configuration error - {e}")
+        return False
+
+    if not config.debtor_ident:
         print("ERROR: NITROBOX_DEBTOR_IDENT not configured")
         return False
 
@@ -21,7 +32,7 @@ def create_nitrobox_billing_run(bearer_token):
 
     # Prepare the billing run data according to the curl example
     billing_data = {
-        "debtorIdent": NITROBOX_DEBTOR_IDENT,
+        "debtorIdent": config.debtor_ident,
         "processingDate": processing_date
     }
 
@@ -35,7 +46,7 @@ def create_nitrobox_billing_run(bearer_token):
         print(f"Creating billing run in Nitrobox...")
 
         response = requests.post(
-            NITROBOX_BILLING_URL,
+            config.billing_url,
             headers=headers,
             json=billing_data,
             timeout=30
