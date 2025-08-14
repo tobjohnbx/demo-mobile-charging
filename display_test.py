@@ -19,7 +19,7 @@ draw = ImageDraw.Draw(image)
 
 # Draw text
 font = ImageFont.load_default()
-draw.text((0, 0), "Hello Marcel!", font=font, fill=255)
+draw.text((0, 0), "Hello Max!", font=font, fill=255)
 
 # Display image
 display.image(image)
