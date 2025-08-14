@@ -46,13 +46,29 @@ class ChargingDisplay:
         self.display.show()
 
     def show_welcome_message(self):
-        """Show welcome message when system starts"""
+        """Show welcome message with current pricing information"""
         image = self._create_image()
         draw = ImageDraw.Draw(image)
 
-        draw.text((10, 10), "EV Charging", font=self.font_large, fill=255)
-        draw.text((15, 30), "Station Ready", font=self.font_small, fill=255)
-        draw.text((5, 50), "Present RFID card", font=self.font_tiny, fill=255)
+        # Get current time to determine pricing
+        current_time = datetime.now().time()
+
+        # Determine current pricing based on time
+        if current_time >= datetime.strptime("22:00:00", "%H:%M:%S").time() or \
+           current_time < datetime.strptime("08:00:00", "%H:%M:%S").time():
+            # Night rate (22:00 - 08:00)
+            price_text = "FREE"
+            time_period = "22:00-08:00"
+        else:
+            # Day rate (08:00 - 22:00)
+            price_text = "€0.10/min"
+            time_period = "08:00-22:00"
+
+        # Display pricing information
+        draw.text((15, 5), "Charging Rate", font=self.font_small, fill=255)
+        draw.text((25, 22), price_text, font=self.font_large, fill=255)
+        draw.text((10, 42), f"Time: {time_period}", font=self.font_tiny, fill=255)
+        draw.text((5, 54), "Present RFID card", font=self.font_tiny, fill=255)
 
         self._show_image(image)
 
