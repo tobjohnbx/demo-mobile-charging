@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Home Assistant Service
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      # Passen Sie den Pfad zu Ihrer Konfiguration an
+      - ./homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      # D-Bus für Bluetooth-Unterstützung
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      - TZ=Europe/Berlin
+    depends_on:
+      - matter-server
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Python Matter Server
+  matter-server:
+    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    container_name: matter-server
+    restart: unless-stopped
+    # Erforderlich für mDNS-Discovery
+    network_mode: host
+    security_opt:
+      # Benötigt für Bluetooth via D-Bus
+      - apparmor:unconfined
+    volumes:
+      # Matter Server Daten und Credentials
+      - ./matter-server/data:/data
+      # D-Bus für Bluetooth-Unterstützung
+      - /run/dbus:/run/dbus:ro
+    environment:
+      - TZ=Europe/Berlin
+    # Standard-Ports für Matter Server (WebSocket)
+    # Port 5580 wird automatisch verwendet
+    command: >
+      --storage-path /data
+      --paa-root-cert-dir /data/credentials
+      --bluetooth-adapter 0
+      --log-level info
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+# Volumes (optional, falls Sie benannte Volumes bevorzugen)
+volumes:
+  homeassistant_config:
+  matter_server_data:
