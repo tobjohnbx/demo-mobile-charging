@@ -12,7 +12,7 @@ charging_active = False
 
 # Setup for LED
 RELAY_PIN = 17
-GPIO.setup(LED_PIN, GPIO.OUT)
+GPIO.setup(RELAY_PIN, GPIO.OUT)
 
 # Debounce variables
 last_tag_id = None
