@@ -6,6 +6,9 @@ import json
 import os
 from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from display import ChargingDisplay
 
 # Use BCM pin numbering
 GPIO.setmode(GPIO.BCM)
@@ -27,6 +30,14 @@ charging_session_start = None
 # Setup for LED
 RELAY_PIN = 17
 GPIO.setup(RELAY_PIN, GPIO.OUT)
+
+# Setup for display
+try:
+    display = ChargingDisplay()
+    print("Display initialized successfully")
+except Exception as e:
+    print(f"Warning: Could not initialize display: {e}")
+    display = None
 
 # Debounce variables
 last_tag_id = None
@@ -126,10 +137,16 @@ def set_charging_state():
         charging_end_time = datetime.now()
         print("Stop charging.")
         
+        # Update display
+        if display:
+            duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
+            display.show_charging_stopped(duration_minutes)
+
         # Create usage record in Nitrobox if we have a valid session
         if charging_session_start:
-            print(f"Charging session ended. Duration: {(charging_end_time - charging_session_start).total_seconds()/60:.2f} minutes")
-            
+            duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
+            print(f"Charging session ended. Duration: {duration_minutes:.2f} minutes")
+
             # Create usage record in Nitrobox
             success = create_nitrobox_usage(
                 tag_id=last_tag_id,
@@ -139,9 +156,17 @@ def set_charging_state():
             
             if success:
                 print("Usage record successfully sent to Nitrobox")
+                if display:
+                    display.show_api_success("Billing processed")
+                    time.sleep(2)
+                    display.show_welcome_message()
             else:
                 print("Failed to send usage record to Nitrobox")
-        
+                if display:
+                    display.show_api_error("Billing failed")
+                    time.sleep(2)
+                    display.show_welcome_message()
+
         charging_active = False
         charging_session_start = None
     else:
@@ -149,6 +174,10 @@ def set_charging_state():
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
+
+        # Update display
+        if display:
+            display.show_charging_started(last_tag_id, charging_session_start)
 
 def toggle_relay():
     global charging_active
@@ -302,11 +331,18 @@ def create_nitrobox_billing_run(bearer_token):
 
 try:
     print("Hold a tag near the reader...")
+    last_charging_display_update = 0
+
     while True:
         tag_id, text = read_rfid()
 
         if should_process_tag(tag_id):
             print(f"Tag ID: {tag_id}")
+
+            # Show card detected on display
+            if display:
+                display.show_card_detected(tag_id)
+                time.sleep(1)  # Brief pause to show card detection
 
             if text:
                 print(f"Text: {text.strip()}")
@@ -322,8 +358,17 @@ try:
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
         else:
+            # Update charging display periodically during active session
+            current_time = time.time()
+            if charging_active and display and (current_time - last_charging_display_update) > 5:
+                duration_minutes = (datetime.now() - charging_session_start).total_seconds() / 60
+                display.show_charging_active(charging_session_start, duration_minutes)
+                last_charging_display_update = current_time
+
             # Small delay to prevent busy waiting
             time.sleep(0.1)
 
 finally:
     GPIO.cleanup()
+    if display:
+        display.clear_display()
