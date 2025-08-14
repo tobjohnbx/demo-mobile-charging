@@ -30,6 +30,7 @@ def read_rfid():
     return tag_id, text
 
 def set_charging_state():
+    global charging_active
     if charging_active:
         print("Stop charging.")
         charging_active = False
