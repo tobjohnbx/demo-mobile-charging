@@ -77,11 +77,11 @@ class ChargingDisplay:
             time_period = "08:00-22:00"
             rate_info = "Day Rate"
 
-        # Display pricing information with better spacing
-        draw.text((20, 8), "Charging Rate", font=self.font_small, fill=255)
-        draw.text((35, 28), price_text, font=self.font_large, fill=255)
-        draw.text((25, 45), f"{rate_info}", font=self.font_small, fill=255)
-        draw.text((20, 57), f"Time: {time_period}", font=self.font_tiny, fill=255)
+        # Display pricing information optimized for 128x64 display
+        draw.text((10, 2), "Charging Rate", font=self.font_small, fill=255)
+        draw.text((20, 20), price_text, font=self.font_large, fill=255)
+        draw.text((15, 38), f"{rate_info}", font=self.font_small, fill=255)
+        draw.text((10, 52), f"Time: {time_period}", font=self.font_tiny, fill=255)
 
         self._show_image(image)
 
