@@ -1,5 +1,6 @@
 # file: rfid_read_simple.py
 import RPi.GPIO as GPIO
+import time
 from mfrc522 import SimpleMFRC522
 
 # Use BCM pin numbering
