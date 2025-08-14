@@ -46,7 +46,18 @@ class ChargingDisplay:
         self.display.show()
 
     def show_welcome_message(self):
-        """Show welcome message with current pricing information"""
+        """Show welcome message when system starts"""
+        image = self._create_image()
+        draw = ImageDraw.Draw(image)
+
+        draw.text((10, 10), "EV Charging", font=self.font_large, fill=255)
+        draw.text((15, 30), "Station Ready", font=self.font_small, fill=255)
+        draw.text((5, 50), "Present RFID card", font=self.font_tiny, fill=255)
+
+        self._show_image(image)
+
+    def show_pricing_info(self):
+        """Show current pricing information based on time"""
         image = self._create_image()
         draw = ImageDraw.Draw(image)
 

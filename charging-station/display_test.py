@@ -130,7 +130,7 @@ class DisplayTester:
         return self._test_method(
             "show_welcome_message()",
             welcome_test,
-            "Show the initial welcome screen"
+            "Show the initial welcome screen with EV Charging text"
         )
 
     def test_card_detected(self):
@@ -285,6 +285,27 @@ class DisplayTester:
             "Show temporary messages with different durations"
         )
 
+    def test_pricing_info(self):
+        """Test pricing information display"""
+        def pricing_test():
+            print("Showing current pricing information...")
+            self.display.show_pricing_info()
+            time.sleep(4)
+
+            print("Note: Pricing shown depends on current time:")
+            current_time = datetime.now().time()
+            if current_time >= datetime.strptime("22:00:00", "%H:%M:%S").time() or \
+               current_time < datetime.strptime("08:00:00", "%H:%M:%S").time():
+                print("  - Current time shows: FREE (22:00-08:00)")
+            else:
+                print("  - Current time shows: €0.10/min (08:00-22:00)")
+
+        return self._test_method(
+            "show_pricing_info()",
+            pricing_test,
+            "Show time-based pricing information screen"
+        )
+
     def test_complete_workflow(self):
         """Test a complete charging workflow simulation"""
         def workflow_test():
@@ -359,6 +380,7 @@ class DisplayTester:
             self.test_api_error,
             self.test_system_status,
             self.test_temporary_message,
+            self.test_pricing_info,
             self.test_complete_workflow
         ]
 
