@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Cleanup: im downloads/-Ordner nur die *neueste* PDF pro customerIdent behalten.
-Dateinamen-Format aus der App: {customerIdent}-{documentIdent}-{timestamp}-{name}.pdf
-"""
 import re
 from pathlib import Path
 from collections import defaultdict
@@ -23,7 +19,6 @@ def keep_only_latest_per_customer(download_dir: Path = DOWNLOAD_DIR) -> int:
     for cust, files in groups.items():
         if len(files) <= 1:
             continue
-        # sort by mtime desc, keep first
         files_sorted = sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)
         for old in files_sorted[1:]:
             try:

@@ -1,17 +1,18 @@
 [Unit]
 Description=PDF Kiosk (show newest PDF fullscreen)
-Wants=nitrobox-api.service
 After=graphical.target nitrobox-api.service
+Wants=nitrobox-api.service
 
 [Service]
 Type=simple
 User=pi
 WorkingDirectory=%h/nitrobox_pdf_server
+Environment=DISPLAY=:0
+Environment=DOWNLOAD_DIR=%h/nitrobox_pdf_server/downloads
+# Bildschirm-Blanking ausschalten
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s off'
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset -dpms'
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s noblank'
-Environment=DISPLAY=:0
-Environment=DOWNLOAD_DIR=%h/nitrobox_pdf_server/downloads
 ExecStart=/usr/bin/python3 %h/nitrobox_pdf_server/kiosk_latest_pdf.py --viewer evince
 Restart=always
 RestartSec=3
