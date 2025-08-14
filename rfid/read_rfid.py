@@ -12,10 +12,12 @@ GPIO.setmode(GPIO.BCM)
 
 # Nitrobox API Configuration
 NITROBOX_API_URL = "https://api.nbx-stage-westeurope.nitrobox.io/v2/usages"
+NITROBOX_BILLING_URL = "https://api.nbx-stage-westeurope.nitrobox.io/v2/billingrun"
 NITROBOX_OAUTH_URL = "https://api.nbx-stage-westeurope.nitrobox.io/demo-mobile-charging/oauth2/token"
 NITROBOX_CLIENT_CREDENTIALS = os.getenv('NITROBOX_CLIENT_CREDENTIALS')  # Base64 encoded client credentials from environment
 NITROBOX_CONTRACT_ID = 2117046
 NITROBOX_PRODUCT_IDENT = "9788b7d9-ab3e-4d7e-a483-258d12bc5078"
+NITROBOX_DEBTOR_IDENT = "06cc07ed-8aa4-4111-ab75-a39ff18aba2c"
 
 # Setup for RFID reader
 reader = SimpleMFRC522()
@@ -219,6 +221,14 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, energy
         
         if response.status_code == 201:
             print("✅ Successfully created usage record in Nitrobox")
+            
+            # After successful usage creation, trigger billing run
+            billing_success = create_nitrobox_billing_run(bearer_token)
+            if billing_success:
+                print("✅ Billing run also successfully created")
+            else:
+                print("⚠️  Usage record created but billing run failed")
+            
             return True
         else:
             print(f"❌ Failed to create usage record. Status: {response.status_code}")
@@ -230,6 +240,64 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, energy
         return False
     except Exception as e:
         print(f"Unexpected error when calling Nitrobox API: {e}")
+        return False
+
+def create_nitrobox_billing_run(bearer_token):
+    """
+    Create a billing run in Nitrobox
+    
+    Args:
+        bearer_token: The bearer token for API authentication
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not bearer_token:
+        print("ERROR: No bearer token provided for billing run")
+        return False
+    
+    if not NITROBOX_DEBTOR_IDENT:
+        print("ERROR: NITROBOX_DEBTOR_IDENT not configured")
+        return False
+    
+    # Use next day for processing date
+    processing_date = (datetime.now() + timedelta(days=1)).isoformat() + "Z"
+    
+    # Prepare the billing run data according to the curl example
+    billing_data = {
+        "debtorIdent": NITROBOX_DEBTOR_IDENT,
+        "processingDate": processing_date
+    }
+    
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": f"Bearer {bearer_token}"
+    }
+    
+    try:
+        print(f"Creating billing run in Nitrobox...")
+        
+        response = requests.post(
+            NITROBOX_BILLING_URL,
+            headers=headers,
+            json=billing_data,
+            timeout=30
+        )
+        
+        if response.status_code == 200 or response.status_code == 201:
+            print("✅ Successfully created billing run in Nitrobox")
+            return True
+        else:
+            print(f"❌ Failed to create billing run. Status: {response.status_code}")
+            print(f"   Response: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Network error when calling Nitrobox billing API: {e}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error when calling Nitrobox billing API: {e}")
         return False
 
 try:
