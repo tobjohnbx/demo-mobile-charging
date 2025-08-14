@@ -47,8 +47,28 @@ services:
       --log-level info
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+      
+  # PDF Display Server
+  pdf-display:
+    container_name: pdf-display
+    build:
+      context: ../pdf_display_server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./pdf_display_server/downloads:/app/downloads
+    environment:
+      - TZ=Europe/Berlin
+      - NITROBOX_CLIENT_CREDENTIALS=${NITROBOX_CLIENT_CREDENTIALS}
+      - NITROBOX_OAUTH_URL=https://api.nbx-stage-westeurope.nitrobox.io/demo-mobile-charging/oauth2/token
+      - NITROBOX_DOCUMENTS_URL=https://api.nbx-stage-westeurope.nitrobox.io/v2/documents
+      - DEFAULT_SEARCH_STRING=${DEFAULT_SEARCH_STRING:-}
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 # Volumes (optional, falls Sie benannte Volumes bevorzugen)
 volumes:
   homeassistant_config:
   matter_server_data:
+  pdf_display_downloads:
