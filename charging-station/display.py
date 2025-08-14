@@ -70,16 +70,18 @@ class ChargingDisplay:
             # Night rate (22:00 - 08:00)
             price_text = "FREE"
             time_period = "22:00-08:00"
+            rate_info = "Night Rate"
         else:
             # Day rate (08:00 - 22:00)
             price_text = "€0.10/min"
             time_period = "08:00-22:00"
+            rate_info = "Day Rate"
 
-        # Display pricing information
-        draw.text((15, 5), "Charging Rate", font=self.font_small, fill=255)
-        draw.text((25, 22), price_text, font=self.font_large, fill=255)
-        draw.text((10, 42), f"Time: {time_period}", font=self.font_tiny, fill=255)
-        draw.text((5, 54), "Present RFID card", font=self.font_tiny, fill=255)
+        # Display pricing information with better spacing
+        draw.text((20, 8), "Charging Rate", font=self.font_large, fill=255)
+        draw.text((35, 28), price_text, font=self.font_large, fill=255)
+        draw.text((25, 45), f"{rate_info}", font=self.font_small, fill=255)
+        draw.text((20, 57), f"Time: {time_period}", font=self.font_tiny, fill=255)
 
         self._show_image(image)
 
