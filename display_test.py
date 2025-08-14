@@ -1,3 +1,4 @@
+
 from PIL import Image, ImageDraw, ImageFont
 import board
 import busio
@@ -15,11 +16,12 @@ display.show()
 image = Image.new("1", (display.width, display.height))
 draw = ImageDraw.Draw(image)
 
-# Load a simple sans-serif font in larger size
-font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+# Load font (you can adjust size if needed)
+font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
 
-# Draw text
-draw.text((0, 20), "Hello Max!", font=font, fill=255)
+# Draw two lines of text
+draw.text((0, 0), "Line 1: Hello", font=font, fill=255)
+draw.text((0, 24), "Line 2: Marcel", font=font, fill=255)
 
 # Display image
 display.image(image)
