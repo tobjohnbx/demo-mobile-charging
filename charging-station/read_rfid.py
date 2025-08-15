@@ -112,17 +112,20 @@ def set_charging_state(customer_info):
         # Emit charging_finished event to inform partner
         try:
             if 'event_emitter' in globals():
-                asyncio.run(event_emitter.emit("charging_finished", 
-                                              tag_id=last_tag_id, 
+                asyncio.run(event_emitter.emit("charging_finished",
+                                              tag_id=last_tag_id,
                                               duration_minutes=(charging_end_time - charging_session_start).total_seconds() / 60,
                                               customer_info=customer_info))
         except Exception as e:
             print(f"Warning: Failed to emit charging_finished event: {e}")
-        
+
         # Update display
         if display:
+        # Calculate cost and show summary
+        if display and charging_session_start:
             duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
-            display.show_charging_stopped(duration_minutes)
+            cost = duration_minutes * 0.1  # €0.1 per minute
+            display.show_charging_stopped(duration_minutes, cost)
 
         # Create usage record in Nitrobox if we have a valid session
         if charging_session_start:
@@ -202,6 +205,7 @@ def set_charging_state(customer_info):
                         # Start pricing display timer (non-blocking)
                         pricing_display_start = time.time()
                         pricing_display_active = True
+
                         return  # Exit early to avoid overriding the pricing display
 
 def toggle_relay():
@@ -211,12 +215,12 @@ def toggle_relay():
 
 try:
     print("Hold a tag near the reader...")
-    
+
     # Set up event emitter and register partner notification
     global event_emitter
     event_emitter = AsyncEventEmitter()
     event_emitter.on("charging_finished", inform_partner)
-    
+
     last_charging_display_update = 0
 
     while True:
@@ -233,7 +237,6 @@ try:
                     display.show_charging_started(last_tag_id, charging_session_start)
                     last_charging_display_update = current_time  # Reset timer for periodic updates
                 elif display and not charging_active:
-                    # If charging stopped during pricing display, show welcome
                     display.show_welcome_message()
 
         # Don't process tags during pricing display to avoid interruption
@@ -268,12 +271,6 @@ try:
             toggle_relay()
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
-        else:
-            # Update charging display periodically during active session (only when no tag processing)
-            if charging_active and display and not pricing_display_active and (current_time - last_charging_display_update) > 5:
-                duration_minutes = (datetime.now() - charging_session_start).total_seconds() / 60
-                display.show_charging_active(charging_session_start, duration_minutes)
-                last_charging_display_update = current_time
 
         # Always have a small delay to prevent busy waiting
         time.sleep(0.1)
