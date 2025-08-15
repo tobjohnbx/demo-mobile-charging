@@ -1,23 +1,24 @@
 [Unit]
 Description=PDF Kiosk (show newest PDF fullscreen)
-After=graphical.target nitrobox-api.service
+After=graphical.target lightdm.service nitrobox-api.service
 Wants=nitrobox-api.service
 
 [Service]
 Type=simple
 User=mobilecharging
-WorkingDirectory=%h/demo-mobile-charging/pdf-viewer-kiosk
+WorkingDirectory=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk
 Environment=DISPLAY=:0
-Environment=XAUTHORITY=%h/.Xauthority
-Environment=DOWNLOAD_DIR=%h/demo-mobile-charging/pdf-viewer-kiosk/downloads
+Environment=XAUTHORITY=/home/mobilecharging/.Xauthority
+Environment=DOWNLOAD_DIR=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/downloads
 
-# Bildschirm-Blanking ausschalten (ACHTUNG: nur unter X11 wirksam)
-ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s off'
-ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset -dpms'
-ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s noblank'
+# Bildschirm-Blanking ausschalten (unter X11 wirksam)
+ExecStartPre=/bin/sleep 5
+ExecStartPre=/usr/bin/env bash -lc 'xset s off'
+ExecStartPre=/usr/bin/env bash -lc 'xset -dpms'
+ExecStartPre=/usr/bin/env bash -lc 'xset s noblank'
 
 # Kiosk starten (evince im Vollbild)
-ExecStart=/usr/bin/python3 %h/demo-mobile-charging/pdf-viewer-kiosk/kiosk_latest_pdf.py --viewer evince
+ExecStart=/usr/bin/python3 /home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/kiosk_latest_pdf.py --viewer evince
 
 Restart=always
 RestartSec=3
