@@ -19,7 +19,7 @@ async def inform_pdf_service(event_name, *args, **kwargs):
     # Extract customer_info from kwargs
     customer_info = kwargs.get("customer_info")
     if not customer_info:
-        print("WARNING: No customer_info provided to inform_partner")
+        print("WARNING: No customer_info provided to inform_pdf_service")
         return
         
     try:
