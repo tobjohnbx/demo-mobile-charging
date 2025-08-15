@@ -1,8 +1,9 @@
 import requests
+import asyncio
 from nitrobox_config import NitroboxConfig
 
 
-def get_nitrobox_plan_options(option_ident, bearer_token):
+async def get_nitrobox_plan_options(option_ident, bearer_token):
     """
     Get plan options from Nitrobox API for the specified plan
     
@@ -38,29 +39,57 @@ def get_nitrobox_plan_options(option_ident, bearer_token):
         "Authorization": f"Bearer {bearer_token}"
     }
 
-    try:
-        print(f"Fetching plan options from Nitrobox for option identifier: {option_ident}...")
-        
-        response = requests.get(
-            plan_options_url,
-            headers=headers,
-            timeout=30
-        )
-        
-        if response.status_code == 200:
-            print("✅ Successfully retrieved plan options from Nitrobox")
-            response_data = response.json()
+    def make_request():
+        """Synchronous function to be run in executor"""
+        try:
+            print(f"Fetching plan options from Nitrobox for option identifier: {option_ident}...")
+            
+            response = requests.get(
+                plan_options_url,
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                print("✅ Successfully retrieved plan options from Nitrobox")
+                response_data = response.json()
+                print(f"Response: {response_data}")
+                return {
+                    "success": True,
+                    "data": response_data
+                }
+            else:
+                print(f"❌ Failed to get plan options. Status: {response.status_code}")
+                print(f"   Response: {response.text}")
+                return {
+                    "success": False,
+                    "error": f"HTTP {response.status_code}: {response.text}"
+                }
+                
+        except requests.exceptions.RequestException as e:
+            print(f"Network error when calling Nitrobox API: {e}")
+            return {
+                "success": False,
+                "error": f"Network error: {str(e)}"
+            }
+        except Exception as e:
+            print(f"Unexpected error when calling Nitrobox API: {e}")
+            return {
+                "success": False,
+                "error": f"Unexpected error: {str(e)}"
+            }
 
-            print(f"Response: {response_data}")
-            return response_data
+    try:
+        # Run the synchronous request in a thread pool
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, make_request)
+        
+        if result["success"]:
+            return result["data"]
         else:
-            print(f"❌ Failed to get plan options. Status: {response.status_code}")
-            print(f"   Response: {response.text}")
+            print(f"Plan options request failed: {result['error']}")
             return None
             
-    except requests.exceptions.RequestException as e:
-        print(f"Network error when calling Nitrobox API: {e}")
-        return None
     except Exception as e:
-        print(f"Unexpected error when calling Nitrobox API: {e}")
+        print(f"Error running async plan options request: {str(e)}")
         return None 
