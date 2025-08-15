@@ -47,10 +47,7 @@ last_tag_id = None
 last_read_time = 0
 DEBOUNCE_TIME = 2.0  # 2 seconds cooldown between reads of the same tag
 
-# Pricing display variables
-pricing_display_start = 0
-pricing_display_active = False
-PRICING_DISPLAY_DURATION = 5.0  # Show pricing for 5 seconds
+
 
 
 
@@ -102,7 +99,7 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state(customer_info):
-    global charging_active, charging_session_start, pricing_display_active, pricing_display_start
+    global charging_active, charging_session_start
     
     if charging_active:
         # Ending charging session
@@ -168,9 +165,6 @@ def set_charging_state(customer_info):
 
         charging_active = False
         charging_session_start = None
-        
-        # Reset pricing display timer when charging stops
-        pricing_display_active = False
     else:
         # Starting charging session
         charging_session_start = datetime.now()
@@ -200,11 +194,6 @@ def set_charging_state(customer_info):
                     
                     if daytime_price is not None:
                         display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
-                        # Start pricing display timer (non-blocking)
-                        pricing_display_start = time.time()
-                        pricing_display_active = True
-
-                        return  # Exit early to avoid overriding the pricing display
 
 def toggle_relay():
     global charging_active
@@ -219,26 +208,10 @@ try:
     event_emitter = AsyncEventEmitter()
     event_emitter.on("charging_finished", inform_partner)
 
-    last_charging_display_update = 0
-
     while True:
         tag_id, text = read_rfid()
-        current_time = time.time()
         
-        # Check if pricing display timer has expired (do this every loop)
-        if pricing_display_active:
-            elapsed = current_time - pricing_display_start
-            if elapsed >= PRICING_DISPLAY_DURATION:
-                pricing_display_active = False
-                # Only switch display if still charging
-                if display and charging_active:
-                    display.show_charging_started(last_tag_id, charging_session_start)
-                    last_charging_display_update = current_time  # Reset timer for periodic updates
-                elif display and not charging_active:
-                    display.show_welcome_message()
-
-        # Don't process tags during pricing display to avoid interruption
-        if should_process_tag(tag_id) and not pricing_display_active:
+        if should_process_tag(tag_id):
             print(f"Tag ID: {tag_id}")
 
             # Show card detected on display
