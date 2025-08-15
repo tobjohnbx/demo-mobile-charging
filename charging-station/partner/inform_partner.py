@@ -1,5 +1,5 @@
 import asyncio
-from request_inform_partner_charging import request_partner_article
+from .request_inform_partner_charging import request_partner_article
 
 async def inform_partner(event_name, *args,**kwargs):    
     print("Trying to inform partner")
