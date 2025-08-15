@@ -13,9 +13,8 @@ except Exception:
     WATCHDOG_AVAILABLE = False
 
 DEFAULT_DIR = os.environ.get("DOWNLOAD_DIR", "downloads")
-DEFAULT_VIEWER = os.environ.get("PDF_VIEWER", "zathura")
+DEFAULT_VIEWER = os.environ.get("PDF_VIEWER", "evince")  # evince | chromium-browser | mupdf | xdg-open
 FULLSCREEN_ARGS = {
-    "zathura": [],
     "evince": ["--fullscreen"],
     "chromium-browser": ["--kiosk", "--disable-infobars", "--noerrdialogs"],
     "chromium": ["--kiosk", "--disable-infobars", "--noerrdialogs"],
@@ -24,7 +23,7 @@ FULLSCREEN_ARGS = {
 }
 
 class PDFKiosk:
-    def __init__(self, directory: Path, viewer: str = "zathura", poll_seconds: float = 3.0):
+    def __init__(self, directory: Path, viewer: str = "evince", poll_seconds: float = 3.0):
         self.directory = directory
         self.viewer = viewer
         self.poll_seconds = poll_seconds
@@ -40,7 +39,11 @@ class PDFKiosk:
 
     def _open_pdf(self, path: Path):
         self._close_current()
-        cmd = [self.viewer] + self.fullscreen_args + [str(path.resolve())]
+        cmd = [self.viewer]
+        if self.viewer.startswith("chromium"):
+            cmd += self.fullscreen_args + [f"file://{path.resolve()}"]
+        else:
+            cmd += self.fullscreen_args + [str(path.resolve())]
         self.current_path = path
         self.current_proc = subprocess.Popen(cmd)
 
@@ -104,9 +107,9 @@ class PDFKiosk:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Open always the newest PDF (Zathura by default) and close the previous one.")
+    parser = argparse.ArgumentParser(description="Open always the newest PDF in fullscreen and close the previous one.")
     parser.add_argument("--dir", default=DEFAULT_DIR, help="Downloads directory (default: downloads or $DOWNLOAD_DIR)")
-    parser.add_argument("--viewer", default=DEFAULT_VIEWER, help="PDF viewer command (zathura|evince|chromium-browser|mupdf|xdg-open)")
+    parser.add_argument("--viewer", default=DEFAULT_VIEWER, help="PDF viewer command (evince|chromium-browser|mupdf|xdg-open)")
     parser.add_argument("--poll-seconds", type=float, default=3.0, help="Polling interval if watchdog not available")
     args = parser.parse_args()
 
