@@ -43,6 +43,11 @@ last_tag_id = None
 last_read_time = 0
 DEBOUNCE_TIME = 2.0  # 2 seconds cooldown between reads of the same tag
 
+# Pricing display variables
+pricing_display_start = 0
+pricing_display_active = False
+PRICING_DISPLAY_DURATION = 5.0  # Show pricing for 5 seconds
+
 
 
 def read_rfid():
@@ -176,11 +181,10 @@ def set_charging_state():
                     
                     if daytime_price is not None:
                         display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
-                        time.sleep(5)  # Show pricing info for 5 seconds
-
-        # Update display
-        if display:
-            display.show_charging_started(last_tag_id, charging_session_start)
+                        # Start pricing display timer (non-blocking)
+                        global pricing_display_start, pricing_display_active
+                        pricing_display_start = time.time()
+                        pricing_display_active = True
 
 def toggle_relay():
     global charging_active
@@ -216,9 +220,16 @@ try:
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
         else:
-            # Update charging display periodically during active session
             current_time = time.time()
-            if charging_active and display and (current_time - last_charging_display_update) > 5:
+            
+            # Check if pricing display timer has expired
+            if pricing_display_active and (current_time - pricing_display_start) >= PRICING_DISPLAY_DURATION:
+                pricing_display_active = False
+                if display and charging_active:
+                    display.show_charging_started(last_tag_id, charging_session_start)
+            
+            # Update charging display periodically during active session
+            if charging_active and display and not pricing_display_active and (current_time - last_charging_display_update) > 5:
                 duration_minutes = (datetime.now() - charging_session_start).total_seconds() / 60
                 display.show_charging_active(charging_session_start, duration_minutes)
                 last_charging_display_update = current_time
