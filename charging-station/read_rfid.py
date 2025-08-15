@@ -125,7 +125,7 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state(customer_info):
-    global charging_active, charging_session_start, current_plan_options, all_stored_plan_options
+    global charging_active, charging_session_start, current_plan_options, all_stored_plan_options, button_release_count
     
     if charging_active:
         # Ending charging session
@@ -170,15 +170,15 @@ def set_charging_state(customer_info):
                 all_stored_plan_options = []
                 return
 
-            
-
+        
             # Create usage record in Nitrobox
             success = create_nitrobox_usage(
                 tag_id=last_tag_id,
                 charging_start_time=charging_session_start,
                 charging_end_time=charging_end_time,
                 bearer_token=bearer_token,
-                customer_info=customer_info
+                customer_info=customer_info,
+                product_ident="9788b7d9-ab3e-4d7e-a483-258d12bc5078"
             )
             
             if success:
@@ -202,6 +202,7 @@ def set_charging_state(customer_info):
                     charging_end_time=charging_end_time,
                     bearer_token=bearer_token,
                     customer_info=customer_info,
+                    product_ident="9c6a76bc-1eee-4bb9-8528-30c3c8b44fe6",
                     button_release_count=button_release_count
                 )
                 
@@ -222,7 +223,6 @@ def set_charging_state(customer_info):
         all_stored_plan_options = []  # Clear all plan options when session ends
     else:
         # Starting charging session
-        global button_release_count
         button_release_count = 0  # Reset button release counter when charging starts
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
