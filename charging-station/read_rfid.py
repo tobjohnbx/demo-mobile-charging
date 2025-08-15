@@ -176,6 +176,7 @@ def set_charging_state():
                     
                     if daytime_price is not None:
                         display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
+                        time.sleep(5)  # Show pricing info for 5 seconds
 
         # Update display
         if display:
