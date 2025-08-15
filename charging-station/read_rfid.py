@@ -26,9 +26,13 @@ from pricing_calculator import (
     display_sequential_pricing
 )
 
+def button_callback(channel):
+    print("Button pressed on channel", channel)
 
 # Use BCM pin numbering
 GPIO.setmode(GPIO.BCM)
+GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(14, GPIO.FALLING, callback=button_callback, bouncetime=200)
 
 # Setup for RFID reader
 reader = SimpleMFRC522()
@@ -54,7 +58,6 @@ except Exception as e:
 last_tag_id = None
 last_read_time = 0
 DEBOUNCE_TIME = 2.0  # 2 seconds cooldown between reads of the same tag
-
 
 def read_rfid():
     """
