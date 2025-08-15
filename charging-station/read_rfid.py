@@ -7,6 +7,8 @@ import asyncio
 from datetime import datetime
 from mfrc522 import SimpleMFRC522
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from gpiozero import Button
+
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,26 +28,22 @@ from pricing_calculator import (
     display_sequential_pricing
 )
 
-def button_callback(channel):
-    print("Button pressed on channel", channel)
+def say_hello():
+    print("Hello!")
 
-# Clean up any previous GPIO state
-try:
-    GPIO.cleanup()
-except:
-    pass
+def say_goodbye():
+    print("Goodbye!")
+
+button = Button(14, pull_up=True)
+
+button.when_pressed = say_hello
+button.when_released = say_goodbye
+
 
 # Use BCM pin numbering
 GPIO.setmode(GPIO.BCM)
 
-# Clean up any existing edge detection on pin 14 first
-try:
-    GPIO.remove_event_detect(14)
-except:
-    pass  # Ignore if no edge detection was configured
 
-GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(14, GPIO.FALLING, callback=button_callback, bouncetime=200)
 
 # Setup for RFID reader
 reader = SimpleMFRC522()
