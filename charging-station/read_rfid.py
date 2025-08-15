@@ -54,9 +54,6 @@ last_read_time = 0
 DEBOUNCE_TIME = 2.0  # 2 seconds cooldown between reads of the same tag
 
 
-
-
-
 def read_rfid():
     """
     Read the RFID card and return the tag ID and text
@@ -182,6 +179,7 @@ def set_charging_state(customer_info):
                     display.show_welcome_message()
 
         charging_active = False
+        toggle_relay()
         charging_session_start = None
         current_plan_options = None  # Clear plan options when session ends
         all_stored_plan_options = []  # Clear all plan options when session ends
@@ -190,6 +188,8 @@ def set_charging_state(customer_info):
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
+        toggle_relay()
+
         
         # Emit charging_started event to inform partner
         try:
@@ -288,7 +288,6 @@ try:
                 continue  # Skip processing if no customer info found
             
             set_charging_state(customer_info)
-            toggle_relay()
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
 
