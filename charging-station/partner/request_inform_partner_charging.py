@@ -2,7 +2,7 @@ import requests
 import asyncio
 
 
-async def request_partner_article(partner: str, article: str, amount: str, currency: str, type_: str, data=None):
+async def request_partner_article(partner: str, article: str, amount: str, currency: str, type_: str):
     """
     Make an async HTTP POST request to the partner article endpoint using requests library.
     
@@ -12,7 +12,6 @@ async def request_partner_article(partner: str, article: str, amount: str, curre
         amount: Amount value
         currency: Currency code
         type_: Type identifier
-        data: Optional JSON data to send in request body
     """
     url = f"http://192.168.179.29/partner/{partner}/article/{article}/amount/{amount}/currency/{currency}/type/{type_}"
     
@@ -23,7 +22,7 @@ async def request_partner_article(partner: str, article: str, amount: str, curre
     def make_request():
         """Synchronous function to be run in executor"""
         try:
-            response = requests.post(url, json=data, headers=headers, timeout=30)
+            response = requests.post(url, headers=headers, timeout=30)
             return {
                 "status": response.status_code,
                 "response": response.text,
