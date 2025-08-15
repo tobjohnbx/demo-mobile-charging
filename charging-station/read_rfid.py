@@ -12,7 +12,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from display import ChargingDisplay
 from request_billing_run import create_nitrobox_billing_run
 from request_create_usage import create_nitrobox_usage
-from nitrobox_config import NitroboxConfig
 from request_bearer_token import fetch_bearer_token
 from request_get_plan_options import get_nitrobox_plan_options
 from request_get_contract_details import get_option_idents_from_contract
@@ -193,10 +192,9 @@ def set_charging_state(customer_info):
 
         # get plan options and display current pricing
         bearer_token = get_bearer_token_with_error_handling()
-        if bearer_token:
-            config = NitroboxConfig.from_env()
-            # Get option identifiers from contract details
-            option_idents = get_option_idents_from_contract(config.contract_ident, bearer_token)
+        if bearer_token and customer_info:
+            # Get option identifiers from contract details using customer's contract
+            option_idents = get_option_idents_from_contract(customer_info.contract_ident, bearer_token)
             
             # Get all plan options in parallel
             if option_idents:
