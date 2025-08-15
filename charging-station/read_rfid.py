@@ -201,6 +201,16 @@ try:
 
     while True:
         tag_id, text = read_rfid()
+        current_time = time.time()
+        
+        # Check if pricing display timer has expired (do this every loop)
+        if pricing_display_active and (current_time - pricing_display_start) >= PRICING_DISPLAY_DURATION:
+            print("DEBUG: Pricing display timer expired, switching to charging display")
+            pricing_display_active = False
+            if display and charging_active:
+                print("DEBUG: Showing charging started display")
+                display.show_charging_started(last_tag_id, charging_session_start)
+                last_charging_display_update = current_time  # Reset timer for periodic updates
 
         if should_process_tag(tag_id):
             print(f"Tag ID: {tag_id}")
@@ -234,26 +244,15 @@ try:
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
         else:
-            current_time = time.time()
-            
-            # Check if pricing display timer has expired
-            if pricing_display_active and (current_time - pricing_display_start) >= PRICING_DISPLAY_DURATION:
-                print("DEBUG: Pricing display timer expired, switching to charging display")
-                pricing_display_active = False
-                if display and charging_active:
-                    print("DEBUG: Showing charging started display")
-                    display.show_charging_started(last_tag_id, charging_session_start)
-                    last_charging_display_update = current_time  # Reset timer for periodic updates
-            
-            # Update charging display periodically during active session
+            # Update charging display periodically during active session (only when no tag processing)
             if charging_active and display and not pricing_display_active and (current_time - last_charging_display_update) > 5:
                 print("DEBUG: Updating to charging active display")
                 duration_minutes = (datetime.now() - charging_session_start).total_seconds() / 60
                 display.show_charging_active(charging_session_start, duration_minutes)
                 last_charging_display_update = current_time
 
-            # Small delay to prevent busy waiting
-            time.sleep(0.1)
+        # Always have a small delay to prevent busy waiting
+        time.sleep(0.1)
 
 finally:
     GPIO.cleanup()
