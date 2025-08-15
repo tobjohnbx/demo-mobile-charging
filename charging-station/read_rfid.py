@@ -188,12 +188,7 @@ def set_charging_state(customer_info):
                     time.sleep(2)
                     display.show_welcome_message()
 
-                # After successful usage creation, trigger billing run
-                billing_success = create_nitrobox_billing_run(bearer_token, customer_info)
-                if billing_success:
-                    print("✅ Billing run also successfully created")
-                else:
-                    print("⚠️  Usage record created but billing run failed")
+                
                 
                 # Additional usage record specifically for button release tracking
                 button_success = create_nitrobox_usage(
@@ -210,6 +205,14 @@ def set_charging_state(customer_info):
                     print("✅ Button release usage record also successfully created")
                 else:
                     print("⚠️  Button release usage record failed")
+
+                # After successful usage creation, trigger billing run
+                billing_success = create_nitrobox_billing_run(bearer_token, customer_info)
+                if billing_success:
+                    print("✅ Billing run also successfully created")
+                else:
+                    print("⚠️  Usage record created but billing run failed")
+                    
             else:
                 print("Failed to send usage record to Nitrobox")
                 if display:
