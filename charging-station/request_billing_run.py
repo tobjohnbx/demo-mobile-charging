@@ -2,12 +2,13 @@ import requests
 from datetime import datetime, timedelta
 from nitrobox_config import NitroboxConfig
 
-def create_nitrobox_billing_run(bearer_token):
+def create_nitrobox_billing_run(bearer_token, customer_info):
     """
     Create a billing run in Nitrobox
 
     Args:
         bearer_token: The bearer token for API authentication
+        customer_info: CustomerInfo object containing contract_id and debtor_ident
 
     Returns:
         bool: True if successful, False otherwise
@@ -23,8 +24,8 @@ def create_nitrobox_billing_run(bearer_token):
         print(f"ERROR: Configuration error - {e}")
         return False
 
-    if not config.debtor_ident:
-        print("ERROR: NITROBOX_DEBTOR_IDENT not configured")
+    if not customer_info or not customer_info.debtor_ident:
+        print("ERROR: No customer debtor ident available")
         return False
 
     # Use next day for processing date
@@ -32,7 +33,7 @@ def create_nitrobox_billing_run(bearer_token):
 
     # Prepare the billing run data according to the curl example
     billing_data = {
-        "debtorIdent": config.debtor_ident,
+        "debtorIdent": customer_info.debtor_ident,
         "processingDate": processing_date
     }
 

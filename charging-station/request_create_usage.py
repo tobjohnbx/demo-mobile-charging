@@ -3,7 +3,7 @@ from datetime import datetime
 from nitrobox_config import NitroboxConfig
 
 
-def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer_token):
+def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer_token, customer_info):
     """
     Create a usage record in Nitrobox for the charging session
 
@@ -12,6 +12,7 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
         charging_start_time: DateTime when charging started
         charging_end_time: DateTime when charging ended
         bearer_token: The bearer token for API authentication
+        customer_info: CustomerInfo object containing contract_id and debtor_ident
 
     Returns:
         bool: True if successful, False otherwise
@@ -27,8 +28,8 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
         print(f"ERROR: Configuration error - {e}")
         return False
 
-    if not config.contract_id:
-        print("ERROR: NITROBOX_CONTRACT_ID not configured")
+    if not customer_info or not customer_info.contract_id:
+        print("ERROR: No customer contract ID available")
         return False
 
     # Calculate charging duration in seconds
@@ -40,7 +41,7 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
     # Prepare the usage data according to Nitrobox API schema (matching curl example)
     usage_data = {
         "productIdent": config.product_ident,
-        "contractId": config.contract_id,
+        "contractId": customer_info.contract_id,
         "usageIdent": usage_ident,
         "unitQuantities": [
             {

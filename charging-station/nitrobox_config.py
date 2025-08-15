@@ -8,9 +8,7 @@ class NitroboxConfig:
     billing_url: str
     oauth_url: str
     client_credentials_b64: str
-    contract_id: int
     product_ident: str
-    debtor_ident: str
     option_ident: str
     contract_ident: str
 
@@ -31,14 +29,9 @@ class NitroboxConfig:
                     "https://api.nbx-stage-westeurope.nitrobox.io/demo-mobile-charging/oauth2/token",
                 ),
                 client_credentials_b64=os.environ["NITROBOX_CLIENT_CREDENTIALS"],
-                contract_id=int(os.environ.get("NITROBOX_CONTRACT_ID", 2117046)),
                 product_ident=os.environ.get(
                     "NITROBOX_PRODUCT_IDENT",
                     "9788b7d9-ab3e-4d7e-a483-258d12bc5078",
-                ),
-                debtor_ident=os.environ.get(
-                    "NITROBOX_DEBTOR_IDENT",
-                    "06cc07ed-8aa4-4111-ab75-a39ff18aba2c",
                 ),
                 option_ident=os.environ.get(
                     "NITROBOX_OPTION_IDENT",

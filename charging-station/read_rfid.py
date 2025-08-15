@@ -16,6 +16,7 @@ from nitrobox_config import NitroboxConfig
 from request_bearer_token import fetch_bearer_token
 from request_get_plan_options import get_nitrobox_plan_options
 from request_get_contract_details import get_option_idents_from_contract
+from rfid_mapping import get_customer_info
 
 
 # Use BCM pin numbering
@@ -97,7 +98,7 @@ def should_process_tag(tag_id):
 
     return False
 
-def set_charging_state():
+def set_charging_state(customer_info):
     global charging_active, charging_session_start
     
     if charging_active:
@@ -127,7 +128,8 @@ def set_charging_state():
                 tag_id=last_tag_id,
                 charging_start_time=charging_session_start,
                 charging_end_time=charging_end_time,
-                bearer_token=bearer_token
+                bearer_token=bearer_token,
+                customer_info=customer_info
             )
             
             if success:
@@ -138,7 +140,7 @@ def set_charging_state():
                     display.show_welcome_message()
 
                 # After successful usage creation, trigger billing run
-                billing_success = create_nitrobox_billing_run(bearer_token)
+                billing_success = create_nitrobox_billing_run(bearer_token, customer_info)
                 if billing_success:
                     print("✅ Billing run also successfully created")
                 else:
@@ -216,7 +218,17 @@ try:
             last_tag_id = tag_id
             last_read_time = time.time()
 
-            set_charging_state()
+            # Get customer information for this RFID tag
+            customer_info = get_customer_info(str(tag_id))
+            if not customer_info:
+                print(f"WARNING: No customer information found for RFID tag {tag_id}")
+                if display:
+                    display.show_api_error("Unknown card")
+                    time.sleep(2)
+                    display.show_welcome_message()
+                continue  # Skip processing if no customer info found
+
+            set_charging_state(customer_info)
             toggle_relay()
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
