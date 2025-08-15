@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
-"""
-Kiosk-Viewer für die neueste PDF im downloads/-Ordner.
-- Öffnet immer die aktuellste PDF im Vollbild
-- Schließt die vorherige Anzeige automatisch
-- Beobachtet Ordneränderungen (watchdog) oder pollt als Fallback
-"""
 import os
 import time
-import signal
 import subprocess
 from pathlib import Path
 from typing import Optional
-import argparse
 
 try:
     from watchdog.observers import Observer
@@ -46,19 +38,13 @@ class PDFKiosk:
         return max(pdfs, key=lambda p: p.stat().st_mtime)
 
     def _open_pdf(self, path: Path):
-        # Close previous
         self._close_current()
-
-        # Build command
         cmd = [self.viewer]
-        # Chromium needs file:// URL
         if self.viewer.startswith("chromium"):
             cmd += self.fullscreen_args + [f"file://{path.resolve()}"]
         else:
             cmd += self.fullscreen_args + [str(path.resolve())]
-
         self.current_path = path
-        # Start detached so it keeps focus
         self.current_proc = subprocess.Popen(cmd)
 
     def _close_current(self):
@@ -79,14 +65,13 @@ class PDFKiosk:
         if latest and latest != self.current_path:
             self._open_pdf(latest)
 
-    # ---------- Watchdog mode ----------
     def run_watchdog(self):
         class Handler(FileSystemEventHandler):
             def __init__(self, kiosk: "PDFKiosk"):
                 self.kiosk = kiosk
             def on_created(self, event):
                 if not event.is_directory and event.src_path.endswith(".pdf"):
-                    time.sleep(0.2)  # give writer a moment
+                    time.sleep(0.2)
                     self.kiosk.show_latest_now()
             def on_modified(self, event):
                 if not event.is_directory and event.src_path.endswith(".pdf"):
@@ -98,7 +83,6 @@ class PDFKiosk:
         observer.schedule(handler, str(self.directory), recursive=False)
         observer.start()
         try:
-            # Initial show
             self.show_latest_now()
             while True:
                 time.sleep(1)
@@ -107,10 +91,7 @@ class PDFKiosk:
             observer.join()
             self._close_current()
 
-    # ---------- Polling mode ----------
     def run_polling(self):
-        # Initial show
-        last_seen: Optional[float] = None
         self.show_latest_now()
         last_seen = self.current_path.stat().st_mtime if self.current_path else None
         try:
@@ -124,8 +105,8 @@ class PDFKiosk:
         finally:
             self._close_current()
 
-
 def main():
+    import argparse
     parser = argparse.ArgumentParser(description="Open always the newest PDF in fullscreen and close the previous one.")
     parser.add_argument("--dir", default=DEFAULT_DIR, help="Downloads directory (default: downloads or $DOWNLOAD_DIR)")
     parser.add_argument("--viewer", default=DEFAULT_VIEWER, help="PDF viewer command (evince|chromium-browser|mupdf|xdg-open)")
@@ -136,7 +117,6 @@ def main():
     directory.mkdir(parents=True, exist_ok=True)
 
     kiosk = PDFKiosk(directory=directory, viewer=args.viewer, poll_seconds=args.poll_seconds)
-
     if WATCHDOG_AVAILABLE:
         kiosk.run_watchdog()
     else:
