@@ -6,6 +6,7 @@ import sys
 import asyncio
 from datetime import datetime
 from mfrc522 import SimpleMFRC522
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -104,7 +105,7 @@ def should_process_tag(tag_id):
 
     return False
 
-async def set_charging_state(customer_info):
+def set_charging_state(customer_info):
     global charging_active, charging_session_start, current_plan_options, all_stored_plan_options
     
     if charging_active:
@@ -202,44 +203,45 @@ async def set_charging_state(customer_info):
         # get plan options and display current pricing
         bearer_token = get_bearer_token_with_error_handling()
         if bearer_token and customer_info:
-            try:
-                # Get option identifiers from contract details using customer's contract
-                option_idents = await get_option_idents_from_contract(customer_info.contract_ident, bearer_token)
+            # Get option identifiers from contract details using customer's contract
+            option_idents = get_option_idents_from_contract(customer_info.contract_ident, bearer_token)
+            
+            # Get all plan options in parallel
+            if option_idents:
+                def get_single_plan_option(option_ident):
+                    """Helper function to get plan options for a single identifier"""
+                    return option_ident, get_nitrobox_plan_options(option_ident, bearer_token)
                 
-                # Get all plan options in parallel using asyncio.gather
-                if option_idents:
-                    print(f"Fetching plan options for {len(option_idents)} option identifiers...")
-                    
-                    # Create async tasks for all plan option requests
-                    tasks = [
-                        get_nitrobox_plan_options(option_ident, bearer_token)
+                all_plan_options = []
+                
+                # Get all plan options in parallel using ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=min(len(option_idents), 5)) as executor:
+                    # Submit all requests
+                    future_to_ident = {
+                        executor.submit(get_single_plan_option, option_ident): option_ident 
                         for option_ident in option_idents
-                    ]
+                    }
                     
-                    # Execute all tasks concurrently
-                    plan_options_results = await asyncio.gather(*tasks, return_exceptions=True)
-                    
-                    # Process results
-                    all_plan_options = []
-                    for option_ident, result in zip(option_idents, plan_options_results):
-                        if isinstance(result, Exception):
-                            print(f"❌ Exception retrieving plan options for {option_ident}: {result}")
-                        elif result:
-                            all_plan_options.append((option_ident, result))
-                            print(f"✅ Successfully retrieved plan options for {option_ident}")
-                        else:
-                            print(f"❌ Failed to retrieve plan options for {option_ident}")
-                    
-                    # Store all plan options globally for total cost calculation
-                    all_stored_plan_options = all_plan_options.copy()
-                    print(f"📝 Stored {len(all_stored_plan_options)} plan options for cost calculation")
+                    # Collect results as they complete
+                    for future in as_completed(future_to_ident):
+                        try:
+                            option_ident, plan_options = future.result()
+                            if plan_options:
+                                all_plan_options.append((option_ident, plan_options))
+                                print(f"✅ Successfully retrieved plan options for {option_ident}")
+                            else:
+                                print(f"❌ Failed to retrieve plan options for {option_ident}")
+                        except Exception as e:
+                            option_ident = future_to_ident[future]
+                            print(f"❌ Exception retrieving plan options for {option_ident}: {e}")
+                
+                # Store all plan options globally for total cost calculation
+                all_stored_plan_options = all_plan_options.copy()
+                print(f"📝 Stored {len(all_stored_plan_options)} plan options for cost calculation")
 
-                    # Display blocking fee for 3 seconds, then charging costs
-                    if all_plan_options and display:
-                        display_sequential_pricing(all_plan_options, display)
-            except Exception as e:
-                print(f"❌ Error in async plan options logic: {e}")
-                all_stored_plan_options = []
+                # Display blocking fee for 3 seconds, then charging costs
+                if all_plan_options and display:
+                    display_sequential_pricing(all_plan_options, display)
 
 async def toggle_relay_listener(event_name, **kwargs):
     """
@@ -299,7 +301,7 @@ try:
                     display.show_welcome_message()
                 continue  # Skip processing if no customer info found
             
-            asyncio.run(set_charging_state(customer_info))
+            set_charging_state(customer_info)
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
 
