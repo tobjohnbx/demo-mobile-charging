@@ -154,6 +154,10 @@ def set_charging_state(customer_info):
 
         charging_active = False
         charging_session_start = None
+        
+        # Reset pricing display timer when charging stops
+        global pricing_display_active
+        pricing_display_active = False
     else:
         # Starting charging session
         charging_session_start = datetime.now()
@@ -207,9 +211,13 @@ try:
             elapsed = current_time - pricing_display_start
             if elapsed >= PRICING_DISPLAY_DURATION:
                 pricing_display_active = False
+                # Only switch display if still charging
                 if display and charging_active:
                     display.show_charging_started(last_tag_id, charging_session_start)
                     last_charging_display_update = current_time  # Reset timer for periodic updates
+                elif display and not charging_active:
+                    # If charging stopped during pricing display, show welcome
+                    display.show_welcome_message()
 
         # Don't process tags during pricing display to avoid interruption
         if should_process_tag(tag_id) and not pricing_display_active:
