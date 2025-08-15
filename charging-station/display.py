@@ -49,7 +49,7 @@ class ChargingDisplay:
         image = self._create_image()
         draw = ImageDraw.Draw(image)
 
-        draw.text((5, 10), "Mobile Charging", font=self.font_small, fill=255)
+        draw.text((5, 10), "Mobile Charging", font=self.font_large, fill=255)
         draw.text((15, 30), "Station Ready", font=self.font_small, fill=255)
         draw.text((5, 50), "Present RFID card", font=self.font_tiny, fill=255)
 
