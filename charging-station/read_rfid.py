@@ -19,6 +19,7 @@ from rfid_mapping import get_customer_info
 from async_event_emitter import AsyncEventEmitter
 from partner.inform_partner_charging_started import inform_partner_charging_started
 from partner.inform_partner_charging_stopped import inform_partner
+from pdf.inform_pdf_service import inform_pdf_service
 from pricing_calculator import (
     calculate_total_charging_cost,
     display_sequential_pricing
@@ -256,6 +257,7 @@ try:
     event_emitter = AsyncEventEmitter()
     event_emitter.on("charging_started", inform_partner_charging_started)
     event_emitter.on("charging_finished", inform_partner)
+    event_emitter.on("charging_finished", inform_pdf_service)
 
     while True:
         tag_id, text = read_rfid()
