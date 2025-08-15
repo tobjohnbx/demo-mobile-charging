@@ -34,14 +34,8 @@ def get_contract_for_customer(customer_info):
     
     # Get contract details from Nitrobox
     print(f"Getting contract details for customer contract ID: {customer_info.contract_id}")
-    contract = get_nitrobox_contract(bearer_token, customer_info)
+    return get_nitrobox_contract(bearer_token, customer_info)
     
-    if not contract:
-        print("WARNING: Could not retrieve contract details")
-        return None
-    else:
-        print(f"✅ Retrieved contract details - Status: {contract.get('status', 'Unknown')}")
-        return contract
 
 def extract_partner_properties(contract):
     """
@@ -88,10 +82,8 @@ async def inform_partner(event_name, *args, **kwargs):
     contract = get_contract_for_customer(customer_info)
     
     if not contract:
-        print("WARNING: Could not retrieve contract details")
+        print("WARNING: Could not retrieve contract")
         return
-    
-    print(contract)
 
     # Extract partner properties from contract
     partner_id, commission_percentage = extract_partner_properties(contract)
@@ -99,7 +91,6 @@ async def inform_partner(event_name, *args, **kwargs):
     if not partner_id or not commission_percentage:
         print("Not relevant for partner.")
         return
-    
 
     result = await request_partner_article(
         partner=partner_id,
