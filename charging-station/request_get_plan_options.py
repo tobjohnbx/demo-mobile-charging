@@ -50,11 +50,9 @@ def get_nitrobox_plan_options(option_ident, bearer_token):
         if response.status_code == 200:
             print("✅ Successfully retrieved plan options from Nitrobox")
             response_data = response.json()
-            
-            # Extract and return price groups from the response
-            price_groups = response_data.get('priceGroups', [])
-            print(f"Found {len(price_groups)} price groups")
-            return price_groups
+
+            print(f"Response: {response_data}")
+            return response_data
         else:
             print(f"❌ Failed to get plan options. Status: {response.status_code}")
             print(f"   Response: {response.text}")

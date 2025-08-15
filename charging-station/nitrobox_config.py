@@ -11,6 +11,8 @@ class NitroboxConfig:
     contract_id: int
     product_ident: str
     debtor_ident: str
+    option_ident: str
+    contract_ident: str
 
     @staticmethod
     def from_env() -> "NitroboxConfig":
@@ -37,6 +39,14 @@ class NitroboxConfig:
                 debtor_ident=os.environ.get(
                     "NITROBOX_DEBTOR_IDENT",
                     "06cc07ed-8aa4-4111-ab75-a39ff18aba2c",
+                ),
+                option_ident=os.environ.get(
+                    "NITROBOX_OPTION_IDENT",
+                    "default-charging-option",  # Replace with actual value
+                ),
+                contract_ident=os.environ.get(
+                    "NITROBOX_CONTRACT_IDENT", 
+                    "3710a184-b0bc-49cf-998b-7c15213b99ea",  # From your curl example
                 ),
             )
         except KeyError as e:

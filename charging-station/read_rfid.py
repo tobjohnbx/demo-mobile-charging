@@ -4,15 +4,18 @@ import time
 import requests
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
-import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from display import ChargingDisplay
 from request_billing_run import create_nitrobox_billing_run
 from request_create_usage import create_nitrobox_usage
 from nitrobox_config import NitroboxConfig
 from request_bearer_token import fetch_bearer_token
+from request_get_plan_options import get_nitrobox_plan_options
+from request_get_contract_details import get_option_idents_from_contract
 
 
 # Use BCM pin numbering
@@ -54,6 +57,20 @@ def read_rfid():
         # Return None if no tag is detected or read fails
         return None, None
 
+def get_bearer_token_with_error_handling():
+    """
+    Fetch bearer token with standardized error handling for charging station
+    Returns bearer token or None, handles display updates
+    """
+    bearer_token = fetch_bearer_token()
+    if not bearer_token:
+        print("Failed to get bearer token")
+        if display:
+            display.show_api_error("Auth failed")
+            time.sleep(2)
+            display.show_welcome_message()
+    return bearer_token
+
 def should_process_tag(tag_id):
     """
     Check if we should process this tag based on debounce logic
@@ -94,13 +111,8 @@ def set_charging_state():
             print(f"Charging session ended. Duration: {duration_minutes:.2f} minutes")
 
             # Fetch bearer token first
-            bearer_token = fetch_bearer_token()
+            bearer_token = get_bearer_token_with_error_handling()
             if not bearer_token:
-                print("Failed to get bearer token for usage record")
-                if display:
-                    display.show_api_error("Auth failed")
-                    time.sleep(2)
-                    display.show_welcome_message()
                 charging_active = False
                 charging_session_start = None
                 return
@@ -140,6 +152,20 @@ def set_charging_state():
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
+
+        # get plan options and display current pricing
+        bearer_token = get_bearer_token_with_error_handling()
+        if bearer_token:
+            config = NitroboxConfig.from_env()
+            # Get option identifiers from contract details
+            option_idents = get_option_idents_from_contract(config.contract_ident, bearer_token)
+            
+            # Use the first option identifier to get plan options
+            if option_idents:
+                plan_options = get_nitrobox_plan_options(option_idents[0], bearer_token)
+                if plan_options and display:
+                    #display.show_plan_options(plan_options)
+                    display.show_pricing_info("08:00", "22:00", plan_options["priceTiers"][1]["price"], plan_options["quantityType"])
 
         # Update display
         if display:
