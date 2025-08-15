@@ -17,7 +17,8 @@ from request_get_plan_options import get_nitrobox_plan_options
 from request_get_contract_details import get_option_idents_from_contract
 from rfid_mapping import get_customer_info
 from async_event_emitter import AsyncEventEmitter
-from partner.inform_partner import inform_partner
+from partner.inform_partner_charging_started import inform_partner_charging_started
+from partner.inform_partner_charging_stopped import inform_partner
 from pricing_calculator import (
     calculate_total_charging_cost,
     display_sequential_pricing
@@ -189,6 +190,15 @@ def set_charging_state(customer_info):
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
+        
+        # Emit charging_started event to inform partner
+        try:
+            if 'event_emitter' in globals():
+                asyncio.run(event_emitter.emit("charging_started",
+                                              tag_id=last_tag_id,
+                                              customer_info=customer_info))
+        except Exception as e:
+            print(f"Warning: Failed to emit charging_started event: {e}")
 
         # get plan options and display current pricing
         bearer_token = get_bearer_token_with_error_handling()
@@ -244,6 +254,7 @@ try:
     # Set up event emitter and register partner notification
     global event_emitter
     event_emitter = AsyncEventEmitter()
+    event_emitter.on("charging_started", inform_partner_charging_started)
     event_emitter.on("charging_finished", inform_partner)
 
     while True:

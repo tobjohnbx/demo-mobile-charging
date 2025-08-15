@@ -10,11 +10,9 @@ if current_dir not in sys.path:
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-# Import from same directory
-import request_inform_partner_charging
-request_partner_article = request_inform_partner_charging.request_partner_article
 from request_bearer_token import fetch_bearer_token
 from request_get_contract import get_nitrobox_contract
+
 
 def get_contract_for_customer(customer_info):
     """
@@ -35,7 +33,7 @@ def get_contract_for_customer(customer_info):
     # Get contract details from Nitrobox
     print(f"Getting contract details for customer contract ID: {customer_info.contract_id}")
     return get_nitrobox_contract(bearer_token, customer_info)
-    
+
 
 def extract_partner_properties(contract):
     """
@@ -45,7 +43,7 @@ def extract_partner_properties(contract):
         contract: Contract dictionary containing properties array
         
     Returns:
-        dict: Dictionary with partner_id and commission_percentage, or None values if not found
+        tuple: (partner_id, commission_percentage) - None values if not found
     """
     if not contract or 'properties' not in contract:
         print("WARNING: Contract has no properties array")
@@ -67,37 +65,30 @@ def extract_partner_properties(contract):
             print(f"Found partner-comission-percentage: {commission_percentage}")
     
     return partner_id, commission_percentage
-    
 
-async def inform_partner(event_name, *args, **kwargs):    
-    print("Trying to inform partner")
+
+def get_partner_info_from_customer(customer_info):
+    """
+    Complete workflow to get partner information from customer data.
     
-    # Extract customer_info from kwargs
-    customer_info = kwargs.get("customer_info")
-    if not customer_info:
-        print("WARNING: No customer_info provided to inform_partner")
-        return
-    
+    Args:
+        customer_info: Customer information containing contract_id
+        
+    Returns:
+        tuple: (partner_id, commission_percentage) - None values if not found or error
+    """
     # Get contract details
     contract = get_contract_for_customer(customer_info)
     
     if not contract:
         print("WARNING: Could not retrieve contract")
-        return
+        return None, None
 
     # Extract partner properties from contract
     partner_id, commission_percentage = extract_partner_properties(contract)
     
     if not partner_id or not commission_percentage:
         print("Not relevant for partner.")
-        return
-
-    result = await request_partner_article(
-        partner=partner_id,
-        article="test_article", 
-        amount="100",
-        currency="EUR",
-        type_="charging"
-    )
-    
-    print("Partner request result:", result)
+        return None, None
+        
+    return partner_id, commission_percentage 
