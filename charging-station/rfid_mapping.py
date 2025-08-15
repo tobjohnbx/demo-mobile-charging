@@ -23,7 +23,7 @@ RFID_TAG_MAPPING: Dict[str, CustomerInfo] = {
     ),
     "572221031092": CustomerInfo(
         contract_id="2118579",
-        debtor_ident="6975df23-fdd2-4388-93a9-9f59cd126b0b",
+        debtor_ident="ae802008-bcbf-466d-be70-1fe612066c2b",
         contract_ident="6975df23-fdd2-4388-93a9-9f59cd126b0b"
     )
 }
