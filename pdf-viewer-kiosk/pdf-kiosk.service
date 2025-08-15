@@ -9,6 +9,8 @@ User=mobilecharging
 WorkingDirectory=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/mobilecharging/.Xauthority
+Environment=PDF_VIEWER=zathura
+Environment=XDG_CONFIG_HOME=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/config
 Environment=DOWNLOAD_DIR=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/downloads
 
 # Bildschirm drehen
@@ -19,8 +21,8 @@ ExecStartPre=/usr/bin/env bash -lc 'xset s off'
 ExecStartPre=/usr/bin/env bash -lc 'xset -dpms'
 ExecStartPre=/usr/bin/env bash -lc 'xset s noblank'
 
-# Kiosk starten (evince im Vollbild)
-ExecStart=/usr/bin/python3 /home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/kiosk_latest_pdf.py --viewer evince
+# Kiosk starten
+ExecStart=/usr/bin/python3 /home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/kiosk_latest_pdf.py --viewer zathura
 
 Restart=always
 RestartSec=3

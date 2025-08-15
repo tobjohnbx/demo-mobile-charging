@@ -1,0 +1,6 @@
+# Zathura kiosk-ish defaults
+set adjust-open "width"
+set page-padding 0
+set zoom-step 0.1
+set window-title-basename true
+set smooth-scroll true
