@@ -209,25 +209,70 @@ def set_charging_state(customer_info):
                             option_ident = future_to_ident[future]
                             print(f"❌ Exception retrieving plan options for {option_ident}: {e}")
 
-                # TODO get the blocking fee which can be found by the name "Block Fee" and display the blocking fee
-
-                # Display pricing from the first successful plan option
+                # Find and display the blocking fee
                 if all_plan_options and display:
-                    option_ident, plan_options = all_plan_options[0]
-                    print(f"Displaying pricing from option: {option_ident}")
+                    blocking_fee_option = None
                     
-                    # Extract pricing from pricingGroups structure
-                    pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
-                    # Find the pricing rule for 08:00-22:00 (daytime pricing)
-                    daytime_price = None
-                    for rule in pricing_rules:
-                        time_period = rule["criteria"]["timePeriod"]
-                        if time_period["start"] == "08:00:00" and time_period["end"] == "22:00:00":
-                            daytime_price = rule["price"]["amount"]
-                            break
+                    # Look for the blocking fee option by name patterns
+                    for option_ident, plan_options in all_plan_options:
+                        option_name = plan_options.get("optionName", "").lower()
+                        name = plan_options.get("name", "").lower()
+                        
+                        # Check if this is a blocking/time-based option
+                        if any(keyword in option_name or keyword in name for keyword in ["block", "blocking", "time"]):
+                            if "pricingGroups" in plan_options:
+                                blocking_fee_option = (option_ident, plan_options)
+                                print(f"Found blocking fee option: {option_ident} ({plan_options.get('optionName', 'Unknown')})")
+                                break
                     
-                    if daytime_price is not None:
-                        display.show_pricing_info("Blocking Fee", "08:00", "22:00", daytime_price, plan_options["quantityType"])
+                    if blocking_fee_option:
+                        option_ident, plan_options = blocking_fee_option
+                        
+                        # Extract pricing from pricingGroups structure
+                        if "pricingGroups" in plan_options and len(plan_options["pricingGroups"]) > 0:
+                            pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
+                            
+                            # Find the pricing rule for 08:00-22:00 (daytime pricing)
+                            daytime_price = None
+                            nighttime_price = None
+                            
+                            for rule in pricing_rules:
+                                time_period = rule["criteria"]["timePeriod"]
+                                price_amount = rule["price"]["amount"]
+                                
+                                if time_period["start"] == "08:00:00" and time_period["end"] == "22:00:00":
+                                    daytime_price = price_amount
+                                elif time_period["start"] == "22:00:00" and time_period["end"] == "08:00:00":
+                                    nighttime_price = price_amount
+                            
+                            # Display the blocking fee (prefer daytime rate if available, otherwise nighttime)
+                            if daytime_price is not None:
+                                if daytime_price == 0.0:
+                                    display.show_pricing_info("Blocking Fee", "08:00", "22:00", daytime_price, plan_options["quantityType"])
+                                else:
+                                    display.show_pricing_info("Blocking Fee", "08:00", "22:00", daytime_price, plan_options["quantityType"])
+                            elif nighttime_price is not None:
+                                display.show_pricing_info("Blocking Fee", "22:00", "08:00", nighttime_price, plan_options["quantityType"])
+                            else:
+                                print("No time-based pricing rules found in blocking fee option")
+                        else:
+                            print("No pricingGroups found in blocking fee option")
+                    else:
+                        print("No blocking fee option found, checking for other displayable options...")
+                        
+                        # Fallback: try to display any option with pricingGroups
+                        for option_ident, plan_options in all_plan_options:
+                            if "pricingGroups" in plan_options:
+                                print(f"Displaying pricing from fallback option: {option_ident}")
+                                pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
+                                
+                                for rule in pricing_rules:
+                                    time_period = rule["criteria"]["timePeriod"]
+                                    if time_period["start"] == "08:00:00" and time_period["end"] == "22:00:00":
+                                        display.show_pricing_info("Service Fee", "08:00", "22:00", 
+                                                                rule["price"]["amount"], plan_options["quantityType"])
+                                        break
+                                break
 
 def toggle_relay():
     global charging_active
