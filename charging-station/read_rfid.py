@@ -121,6 +121,7 @@ def set_charging_state(customer_info):
             duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
             cost = duration_minutes * 0.1  # €0.1 per minute
             display.show_charging_stopped(duration_minutes, cost)
+            time.sleep(2)
 
         # Create usage record in Nitrobox if we have a valid session
         if charging_session_start:
