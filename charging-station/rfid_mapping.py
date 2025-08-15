@@ -12,19 +12,19 @@ class CustomerInfo:
 # Static mapping of RFID tag numbers to customer information
 RFID_TAG_MAPPING: Dict[str, CustomerInfo] = {
     "316922528399": CustomerInfo(
-        contract_id="2117046",
+        contract_id="2118902",
         debtor_ident="06cc07ed-8aa4-4111-ab75-a39ff18aba2c",
-        contract_ident="3710a184-b0bc-49cf-998b-7c15213b99ea"
+        contract_ident="54156c4a-00a6-462d-ba2c-f82d016fc376"
     ),
     "868383524177": CustomerInfo(
-        contract_id="2118389",
+        contract_id="2118903",
         debtor_ident="c4b14198-4fc1-4ef2-bc82-1f568f8bbd0a",
-        contract_ident="4e1ae42a-6df9-4f39-9afe-185672483251"
+        contract_ident="7114be43-508c-433c-9dde-7a8b346a508e"
     ),
     "572221031092": CustomerInfo(
-        contract_id="2118579",
+        contract_id="2118904",
         debtor_ident="ae802008-bcbf-466d-be70-1fe612066c2b",
-        contract_ident="6975df23-fdd2-4388-93a9-9f59cd126b0b"
+        contract_ident="a007f215-f0e9-4c5e-8fcf-61c663197738"
     )
 }
 
