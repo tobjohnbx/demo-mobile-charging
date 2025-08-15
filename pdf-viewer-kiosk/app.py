@@ -92,8 +92,8 @@ def set_last_ident(customer_ident: str, document_ident: str) -> None:
 
 class DownloadRequest(BaseModel):
     customerIdent: str
-    waitSeconds: int | None = None
-    pollSeconds: float | None = None
+    waitSeconds: Optional[int] = None
+    pollSeconds: Optional[float] = None
 
 def _basic_auth_header() -> str:
     # Nur aus ENV
