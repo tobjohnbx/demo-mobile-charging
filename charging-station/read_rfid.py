@@ -119,8 +119,6 @@ def set_charging_state(customer_info):
         except Exception as e:
             print(f"Warning: Failed to emit charging_finished event: {e}")
 
-        # Update display
-        if display:
         # Calculate cost and show summary
         if display and charging_session_start:
             duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
