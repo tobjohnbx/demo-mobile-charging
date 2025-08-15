@@ -75,6 +75,95 @@ def get_current_time_based_pricing(pricing_rules):
     return None
 
 
+def calculate_tiered_cost(total_units, price_tiers, plan_name):
+    """
+    Calculate cost using tiered pricing structure
+    
+    Args:
+        total_units: Total number of units (seconds, minutes, etc.)
+        price_tiers: List of price tiers with quantity and price
+        plan_name: Name for logging purposes
+        
+    Returns:
+        float: Total cost based on tiered pricing
+        
+    Example:
+        price_tiers = [
+            {"quantity": 5.0, "price": 0.0, "type": "FLAT"},  # First 5 units free
+            {"quantity": 1.0, "price": 0.01, "type": "FLAT"}  # Each additional unit €0.01
+        ]
+        
+        For 10 units:
+        - First 5 units: 5 × €0.0 = €0.00
+        - Next 5 units: 5 × €0.01 = €0.05
+        - Total: €0.05
+    """
+    if not price_tiers:
+        return 0.0
+    
+    total_cost = 0.0
+    remaining_units = total_units
+    
+    print(f"🔢 Calculating tiered pricing for {plan_name}:")
+    print(f"   Total units to process: {total_units:.2f}")
+    
+    for i, tier in enumerate(price_tiers):
+        tier_quantity = tier["quantity"]
+        tier_price = tier["price"]
+        tier_type = tier.get("type", "FLAT")
+        
+        if remaining_units <= 0:
+            break
+            
+        # Calculate units to apply this tier pricing to
+        units_in_this_tier = min(remaining_units, tier_quantity)
+        tier_cost = units_in_this_tier * tier_price
+        
+        total_cost += tier_cost
+        remaining_units -= units_in_this_tier
+        
+        print(f"   Tier {i+1}: {units_in_this_tier:.2f} units × €{tier_price:.4f} = €{tier_cost:.4f}")
+        
+        # If this tier doesn't fully consume remaining units and it's the last tier,
+        # apply the last tier's rate to all remaining units
+        if i == len(price_tiers) - 1 and remaining_units > 0:
+            additional_cost = remaining_units * tier_price
+            total_cost += additional_cost
+            print(f"   Remaining {remaining_units:.2f} units × €{tier_price:.4f} = €{additional_cost:.4f}")
+            break
+    
+    print(f"   💰 Total tiered cost: €{total_cost:.4f}")
+    return total_cost
+
+
+def test_tiered_pricing():
+    """
+    Test function to verify tiered pricing calculation works correctly
+    """
+    print("🧪 Testing tiered pricing calculation...")
+    
+    # Example from user: 5 seconds free, then €0.01 per second
+    example_tiers = [
+        {"quantity": 5.0, "price": 0.0, "type": "FLAT"},
+        {"quantity": 1.0, "price": 0.01, "type": "FLAT"}
+    ]
+    
+    test_cases = [
+        (3.0, 0.0),    # 3 seconds = €0.00 (all in free tier)
+        (5.0, 0.0),    # 5 seconds = €0.00 (exactly free tier)
+        (7.0, 0.02),   # 7 seconds = €0.02 (5 free + 2×€0.01)
+        (10.0, 0.05),  # 10 seconds = €0.05 (5 free + 5×€0.01)
+        (15.0, 0.10)   # 15 seconds = €0.10 (5 free + 10×€0.01)
+    ]
+    
+    print("Expected vs Actual results:")
+    for units, expected in test_cases:
+        actual = calculate_tiered_cost(units, example_tiers, "Test")
+        status = "✅" if abs(actual - expected) < 0.001 else "❌"
+        print(f"{status} {units} units: Expected €{expected:.2f}, Got €{actual:.2f}")
+        print()
+
+
 def calculate_single_plan_cost(start_time, end_time, plan_options, plan_name):
     """
     Calculate cost for a single plan option
@@ -125,21 +214,36 @@ def calculate_single_plan_cost(start_time, end_time, plan_options, plan_name):
                     break
                     
     elif "priceTiers" in plan_options:
-        # Usage-based pricing (charging-time)
+        # Usage-based pricing (charging-time) with tiered pricing
         price_tiers = plan_options["priceTiers"]
         quantity_type = plan_options.get("quantityType", "SECOND")
         
-        # For now, use the last tier's price (highest quantity tier)
-        # This could be enhanced to handle complex tier logic
-        if price_tiers:
-            price_per_unit = price_tiers[-1]["price"]
+        # Calculate duration in the appropriate units
+        duration_seconds = (end_time - start_time).total_seconds()
+        
+        if quantity_type.upper() == "SECOND":
+            total_units = duration_seconds
+        elif quantity_type.upper() == "MINUTE":
+            total_units = duration_seconds / 60
+        elif quantity_type.upper() == "HOUR":
+            total_units = duration_seconds / 3600
         else:
-            price_per_unit = 0.0
+            print(f"⚠️  Unknown quantity type: {quantity_type}, using seconds")
+            total_units = duration_seconds
+        
+        # Calculate cost using tiered pricing
+        cost = calculate_tiered_cost(total_units, price_tiers, plan_name)
+        
+        print(f"💰 {plan_name} tiered cost calculation:")
+        print(f"   Total {quantity_type.lower()}: {total_units:.2f}")
+        print(f"   Cost: €{cost:.4f}")
+        
+        return cost
     else:
         print(f"⚠️  Unknown plan structure for {plan_name}")
         return 0.0
     
-    # Calculate duration based on quantity type
+    # Calculate duration based on quantity type for time-based pricing
     duration_seconds = (end_time - start_time).total_seconds()
     
     if quantity_type.upper() == "SECOND":
