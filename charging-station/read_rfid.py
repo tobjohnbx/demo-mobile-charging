@@ -28,11 +28,16 @@ from pricing_calculator import (
     display_sequential_pricing
 )
 
+# Global variable to count button releases
+button_release_count = 0
+
 def say_hello():
     print("Hello!")
 
 def say_goodbye():
-    print("Goodbye!")
+    global button_release_count
+    button_release_count += 1
+    print(f"Goodbye! Button released {button_release_count} times")
 
 button = Button(14, pull_up=True)
 
@@ -120,7 +125,7 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state(customer_info):
-    global charging_active, charging_session_start, current_plan_options, all_stored_plan_options
+    global charging_active, charging_session_start, current_plan_options, all_stored_plan_options, button_release_count
     
     if charging_active:
         # Ending charging session
@@ -165,13 +170,15 @@ def set_charging_state(customer_info):
                 all_stored_plan_options = []
                 return
 
+        
             # Create usage record in Nitrobox
             success = create_nitrobox_usage(
                 tag_id=last_tag_id,
                 charging_start_time=charging_session_start,
                 charging_end_time=charging_end_time,
                 bearer_token=bearer_token,
-                customer_info=customer_info
+                customer_info=customer_info,
+                product_ident="9788b7d9-ab3e-4d7e-a483-258d12bc5078"
             )
             
             if success:
@@ -187,6 +194,22 @@ def set_charging_state(customer_info):
                     print("✅ Billing run also successfully created")
                 else:
                     print("⚠️  Usage record created but billing run failed")
+                
+                # Additional usage record specifically for button release tracking
+                button_success = create_nitrobox_usage(
+                    tag_id=last_tag_id,
+                    charging_start_time=charging_session_start,
+                    charging_end_time=charging_end_time,
+                    bearer_token=bearer_token,
+                    customer_info=customer_info,
+                    product_ident="9c6a76bc-1eee-4bb9-8528-30c3c8b44fe6",
+                    button_release_count=button_release_count
+                )
+                
+                if button_success:
+                    print("✅ Button release usage record also successfully created")
+                else:
+                    print("⚠️  Button release usage record failed")
             else:
                 print("Failed to send usage record to Nitrobox")
                 if display:
@@ -200,8 +223,10 @@ def set_charging_state(customer_info):
         all_stored_plan_options = []  # Clear all plan options when session ends
     else:
         # Starting charging session
+        button_release_count = 0  # Reset button release counter when charging starts
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Button release counter reset to 0")
         charging_active = True
 
         
