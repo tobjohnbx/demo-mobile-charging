@@ -10,8 +10,7 @@ async def inform_partner(event_name, *args,**kwargs):
         article="test_article", 
         amount="100",
         currency="EUR",
-        type_="charging",
-        data={"event": event_name, "args": args, "kwargs": kwargs}
+        type_="charging"
     )
     
     print("Partner request result:", result)
