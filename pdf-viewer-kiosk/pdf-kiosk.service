@@ -11,6 +11,8 @@ Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/mobilecharging/.Xauthority
 Environment=DOWNLOAD_DIR=/home/mobilecharging/demo-mobile-charging/pdf-viewer-kiosk/downloads
 
+# Bildschirm drehen
+ExecStartPre=/usr/bin/env bash -lc 'xrandr --output HDMI-1 --rotate left'
 # Bildschirm-Blanking ausschalten (unter X11 wirksam)
 ExecStartPre=/bin/sleep 5
 ExecStartPre=/usr/bin/env bash -lc 'xset s off'
