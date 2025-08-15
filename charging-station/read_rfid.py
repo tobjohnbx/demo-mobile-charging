@@ -4,7 +4,8 @@ import time
 import os
 import sys
 import asyncio
-from datetime import datetime
+import requests
+from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -39,6 +40,18 @@ all_stored_plan_options = []  # Store all plan options for total cost calculatio
 # Setup for LED
 RELAY_PIN = 17
 GPIO.setup(RELAY_PIN, GPIO.OUT)
+
+# Setup for coffee button
+COFFEE_BUTTON_PIN = 14  # GPIO 14 (BCM) corresponds to Pin 8 (Board)
+GPIO.setup(COFFEE_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+last_button_state = True  # True = not pressed (Pull-up)
+coffee_button_pressed = False
+last_coffee_purchase_time = 0
+COFFEE_DEBOUNCE_TIME = 1.0  # 1 second cooldown between coffee button presses
+
+# Coffee product configuration
+COFFEE_PRODUCT_IDENT = os.environ.get("NITROBOX_COFFEE_PRODUCT_IDENT", "coffee-product")
+COFFEE_PRICE = 2.50  # Price in EUR
 
 # Setup for display
 try:
@@ -235,6 +248,159 @@ def set_charging_state(customer_info):
                 if all_plan_options and display:
                     display_sequential_pricing(all_plan_options, display)
 
+def create_coffee_purchase(tag_id, customer_info):
+    """
+    Create a usage record in Nitrobox for a coffee purchase
+    
+    Args:
+        tag_id: The RFID tag ID used for authentication
+        customer_info: CustomerInfo object containing contract_id and debtor_ident
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    if not tag_id or not customer_info:
+        print("ERROR: No tag ID or customer info available for coffee purchase")
+        return False
+        
+    # Get bearer token
+    bearer_token = get_bearer_token_with_error_handling()
+    if not bearer_token:
+        return False
+        
+    # Create timestamps for coffee purchase (just a moment ago)
+    purchase_time = datetime.now()
+    
+    # Show coffee purchase on display
+    if display:
+        display.show_text([
+            "Coffee Purchase",
+            f"Price: €{COFFEE_PRICE:.2f}",
+            "Processing...",
+            ""
+        ])
+        
+    # Generate unique usage identifier for coffee
+    usage_ident = f"coffee-{tag_id}-{int(purchase_time.timestamp())}"
+    
+    # Get configuration from environment
+    try:
+        config = NitroboxConfig.from_env()
+    except RuntimeError as e:
+        print(f"ERROR: Configuration error - {e}")
+        if display:
+            display.show_api_error("Config Error")
+            time.sleep(2)
+            display.show_welcome_message()
+        return False
+        
+    # Prepare the usage data for coffee purchase
+    usage_data = {
+        "productIdent": COFFEE_PRODUCT_IDENT,
+        "contractId": customer_info.contract_id,
+        "usageIdent": usage_ident,
+        "unitQuantities": [
+            {
+                "unitQuantity": 1,
+                "unitQuantityType": "PIECE"
+            }
+        ],
+        "startDate": purchase_time.isoformat() + "Z",
+        "endDate": purchase_time.isoformat() + "Z",
+        "taxLocation": {
+            "country": "DE"
+        }
+    }
+    
+    headers = {
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": f"Bearer {bearer_token}"
+    }
+    
+    try:
+        print(f"Sending coffee purchase data to Nitrobox...")
+        
+        response = requests.post(
+            config.api_url,
+            headers=headers,
+            json=usage_data,
+            timeout=30
+        )
+        
+        if response.status_code == 201:
+            print("✅ Successfully created coffee purchase record in Nitrobox")
+            if display:
+                display.show_api_success("Coffee Purchased")
+                time.sleep(2)
+                display.show_welcome_message()
+                
+            # After successful usage creation, trigger billing run
+            billing_success = create_nitrobox_billing_run(bearer_token, customer_info)
+            if billing_success:
+                print("✅ Billing run also successfully created for coffee purchase")
+            else:
+                print("⚠️ Coffee purchase record created but billing run failed")
+                
+            return True
+        else:
+            print(f"❌ Failed to create coffee purchase record. Status: {response.status_code}")
+            print(f"   Response: {response.text}")
+            if display:
+                display.show_api_error("Purchase Failed")
+                time.sleep(2)
+                display.show_welcome_message()
+            return False
+            
+    except Exception as e:
+        print(f"Error when calling Nitrobox API for coffee purchase: {e}")
+        if display:
+            display.show_api_error("API Error")
+            time.sleep(2)
+            display.show_welcome_message()
+        return False
+
+def check_coffee_button():
+    """Check if coffee button is pressed and handle coffee purchase"""
+    global last_button_state, coffee_button_pressed, last_coffee_purchase_time, last_tag_id
+    
+    # Skip if no tag has been read yet
+    if not last_tag_id:
+        return
+        
+    # Read current button state
+    current_button_state = GPIO.input(COFFEE_BUTTON_PIN)
+    
+    # Button press detected (transition from HIGH to LOW)
+    if last_button_state == True and current_button_state == False:
+        current_time = time.time()
+        
+        # Check debounce
+        if current_time - last_coffee_purchase_time >= COFFEE_DEBOUNCE_TIME:
+            print("Coffee button pressed!")
+            coffee_button_pressed = True
+            
+            # Get customer information for the last scanned RFID tag
+            customer_info = get_customer_info(str(last_tag_id))
+            if not customer_info:
+                print(f"WARNING: No customer information found for RFID tag {last_tag_id}")
+                if display:
+                    display.show_api_error("Unknown card")
+                    time.sleep(2)
+                    display.show_welcome_message()
+                return
+                
+            # Create coffee purchase
+            create_coffee_purchase(last_tag_id, customer_info)
+            
+            # Update last purchase time
+            last_coffee_purchase_time = current_time
+            
+        time.sleep(0.2)  # Debounce delay
+    
+    # Update button state
+    last_button_state = current_button_state
+
 def toggle_relay():
     global charging_active
     print("Toggling relay")
@@ -248,8 +414,23 @@ try:
     event_emitter = AsyncEventEmitter()
     event_emitter.on("charging_finished", inform_partner)
 
+    # Add welcome message with coffee button instruction
+    if display:
+        display.show_text([
+            "Ready",
+            "Scan RFID card",
+            "then press button",
+            "for coffee"
+        ])
+        time.sleep(2)
+        display.show_welcome_message()
+    
     while True:
+        # Check for RFID tag
         tag_id, text = read_rfid()
+        
+        # Check coffee button (can be pressed anytime after a tag has been read)
+        check_coffee_button()
         
         if should_process_tag(tag_id):
             print(f"Tag ID: {tag_id}")
@@ -280,6 +461,19 @@ try:
             
             set_charging_state(customer_info)
             toggle_relay()
+            
+            # Show coffee button instruction after successful card read
+            if display:
+                time.sleep(1)  # Brief pause
+                display.show_text([
+                    "Card Accepted",
+                    "",
+                    "Press button",
+                    "for coffee"
+                ])
+                time.sleep(2)
+                display.show_welcome_message()
+                
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
 

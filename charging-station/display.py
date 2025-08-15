@@ -195,3 +195,42 @@ class ChargingDisplay:
 
         self._show_image(image)
         time.sleep(duration)
+        
+    def show_text(self, text_lines):
+        """Show multiple lines of text on the display
+        
+        Args:
+            text_lines: List of text lines to display
+        """
+        image = self._create_image()
+        draw = ImageDraw.Draw(image)
+        
+        # Display text lines
+        y_position = 5
+        for i, line in enumerate(text_lines):
+            if i == 0:  # First line larger
+                font = self.font_large
+                line_height = 20
+            else:
+                font = self.font_small
+                line_height = 15
+            
+            # Center the text
+            try:
+                # Newer PIL versions
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_width = bbox[2] - bbox[0]
+            except AttributeError:
+                # Older PIL versions
+                try:
+                    text_width = draw.textsize(line, font=font)[0]
+                except AttributeError:
+                    # Fallback
+                    text_width = len(line) * 8
+            
+            x_position = max(0, (self.display.width - text_width) // 2)
+            
+            draw.text((x_position, y_position), line, font=font, fill=255)
+            y_position += line_height
+        
+        self._show_image(image)
