@@ -39,6 +39,8 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
 
     # Generate unique usage identifier
     usage_ident = f"rfid-session-{tag_id}-{int(charging_start_time.timestamp())}"
+    if button_release_count is not None:
+        usage_ident += "-coffee"
 
     # Prepare the usage data according to Nitrobox API schema (matching curl example)
     unit_quantities = [
