@@ -10,7 +10,7 @@ pip3 install watchdog
 
 ## FastAPI beim Booten starten (Systemd)
 ```bash
-cd ~/nitrobox_pdf_server
+cd ~/pdf-viewer-kiosk
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
