@@ -3,7 +3,7 @@ from datetime import datetime
 from nitrobox_config import NitroboxConfig
 
 
-def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer_token, customer_info):
+def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer_token, customer_info, product_ident, button_release_count=None):
     """
     Create a usage record in Nitrobox for the charging session
 
@@ -13,6 +13,8 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
         charging_end_time: DateTime when charging ended
         bearer_token: The bearer token for API authentication
         customer_info: CustomerInfo object containing contract_id and debtor_ident
+        product_ident: The product identifier for Nitrobox
+        button_release_count: Number of times the button was released during charging session (optional)
 
     Returns:
         bool: True if successful, False otherwise
@@ -39,16 +41,27 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
     usage_ident = f"rfid-session-{tag_id}-{int(charging_start_time.timestamp())}"
 
     # Prepare the usage data according to Nitrobox API schema (matching curl example)
+    unit_quantities = [
+        {
+            "unitQuantity": duration_seconds,
+            "unitQuantityType": "SECOND"
+        }
+    ]
+    
+    # Only add button count if it was provided
+    if button_release_count is not None:
+        unit_quantities = [
+            {
+                "unitQuantity": button_release_count,
+                "unitQuantityType": "PC"
+            }
+        ]
+    
     usage_data = {
-        "productIdent": config.product_ident,
+        "productIdent": product_ident,
         "contractId": customer_info.contract_id,
         "usageIdent": usage_ident,
-        "unitQuantities": [
-            {
-                "unitQuantity": duration_seconds,
-                "unitQuantityType": "SECOND"
-            }
-        ],
+        "unitQuantities": unit_quantities,
         "startDate": charging_start_time.isoformat() + "+01:00",
         "endDate": charging_end_time.isoformat() + "Z",
         "taxLocation": {
@@ -63,7 +76,10 @@ def create_nitrobox_usage(tag_id, charging_start_time, charging_end_time, bearer
     }
 
     try:
-        print(f"Sending usage data to Nitrobox for {duration_seconds} seconds of charging...")
+        if button_release_count is not None:
+            print(f"Sending usage data to Nitrobox for {duration_seconds} seconds of charging with {button_release_count} button releases...")
+        else:
+            print(f"Sending usage data to Nitrobox for {duration_seconds} seconds of charging...")
 
         response = requests.post(
             config.api_url,
