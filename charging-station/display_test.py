@@ -63,6 +63,11 @@ class DisplayTester:
                 self.display.show_welcome_message()
                 time.sleep(5)
 
+                # 3. Card Detected
+                print("3️⃣  Card Detected (3s)")
+                self.display.show_card_detected(self.test_data['tag_id'])
+                time.sleep(3)
+
                 # 2. Pricing Information
                 print("2️⃣  Pricing Information - Different Quantity Types (6s)")
                 # Example with day rate per minute
@@ -78,11 +83,6 @@ class DisplayTester:
                 print("2️⃣c Night Rate - FREE (2s)")
                 self.display.show_pricing_info("22:00", "08:00", 0.0000, "MINUTE")
                 time.sleep(2)
-
-                # 3. Card Detected
-                print("3️⃣  Card Detected (3s)")
-                self.display.show_card_detected(self.test_data['tag_id'])
-                time.sleep(3)
 
                 # 4. Charging Started
                 print("4️⃣  Charging Started (4s)")
