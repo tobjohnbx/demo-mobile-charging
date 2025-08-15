@@ -38,7 +38,7 @@ class NitroboxConfig:
                     "default-charging-option",  # Replace with actual value
                 ),
                 contract_ident=os.environ.get(
-                    "NITROBOX_CONTRACT_IDENT", 
+                    "NITROBOX_CONTRACT_IDENT",
                     "3710a184-b0bc-49cf-998b-7c15213b99ea",  # From your curl example
                 ),
             )
