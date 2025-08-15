@@ -8,6 +8,7 @@ import sys
 import asyncio
 from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from display import ChargingDisplay
@@ -179,10 +180,42 @@ def set_charging_state(customer_info):
             # Get option identifiers from contract details
             option_idents = get_option_idents_from_contract(config.contract_ident, bearer_token)
             
-            # Use the first option identifier to get plan options
+            # Get all plan options in parallel
             if option_idents:
-                plan_options = get_nitrobox_plan_options(option_idents[0], bearer_token)
-                if plan_options and display:
+                def get_single_plan_option(option_ident):
+                    """Helper function to get plan options for a single identifier"""
+                    return option_ident, get_nitrobox_plan_options(option_ident, bearer_token)
+                
+                all_plan_options = []
+                
+                # Get all plan options in parallel using ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=min(len(option_idents), 5)) as executor:
+                    # Submit all requests
+                    future_to_ident = {
+                        executor.submit(get_single_plan_option, option_ident): option_ident 
+                        for option_ident in option_idents
+                    }
+                    
+                    # Collect results as they complete
+                    for future in as_completed(future_to_ident):
+                        try:
+                            option_ident, plan_options = future.result()
+                            if plan_options:
+                                all_plan_options.append((option_ident, plan_options))
+                                print(f"✅ Successfully retrieved plan options for {option_ident}")
+                            else:
+                                print(f"❌ Failed to retrieve plan options for {option_ident}")
+                        except Exception as e:
+                            option_ident = future_to_ident[future]
+                            print(f"❌ Exception retrieving plan options for {option_ident}: {e}")
+
+                # TODO get the blocking fee which can be found by the name "Block Fee" and display the blocking fee
+
+                # Display pricing from the first successful plan option
+                if all_plan_options and display:
+                    option_ident, plan_options = all_plan_options[0]
+                    print(f"Displaying pricing from option: {option_ident}")
+                    
                     # Extract pricing from pricingGroups structure
                     pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
                     # Find the pricing rule for 08:00-22:00 (daytime pricing)
@@ -194,7 +227,7 @@ def set_charging_state(customer_info):
                             break
                     
                     if daytime_price is not None:
-                        display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
+                        display.show_pricing_info("Blocking Fee", "08:00", "22:00", daytime_price, plan_options["quantityType"])
 
 def toggle_relay():
     global charging_active

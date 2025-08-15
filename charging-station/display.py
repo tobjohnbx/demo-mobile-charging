@@ -2,7 +2,6 @@ from PIL import Image, ImageDraw, ImageFont
 import board
 import busio
 from adafruit_ssd1306 import SSD1306_I2C
-from datetime import datetime
 import time
 
 class ChargingDisplay:
@@ -56,7 +55,7 @@ class ChargingDisplay:
 
         self._show_image(image)
 
-    def show_pricing_info(self, start_time="08:00", end_time="22:00", amount=0.1000, quantity_type="MINUTE"):
+    def show_pricing_info(self, heading, start_time, end_time, amount=0.1000, quantity_type="MINUTE"):
         """Show pricing information based on provided parameters
 
         Args:
@@ -86,12 +85,14 @@ class ChargingDisplay:
         else:
             price_text = f"€{amount:.2f}/{short_quantity}"
 
-        time_period = f"{start_time}-{end_time}"
-
         # Display pricing information with more space utilization
-        draw.text((15, 5), "Charging Rate", font=self.font_small, fill=255)
+        draw.text((15, 5), heading, font=self.font_small, fill=255)
         draw.text((15, 25), price_text, font=self.font_large, fill=255)
-        draw.text((10, 48), f"Active: {time_period}", font=self.font_small, fill=255)
+        
+        # Only display time period if both start_time and end_time are provided
+        if start_time and end_time:
+            time_period = f"{start_time}-{end_time}"
+            draw.text((10, 48), f"Active: {time_period}", font=self.font_small, fill=255)
 
         self._show_image(image)
 
