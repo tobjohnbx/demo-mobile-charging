@@ -272,6 +272,88 @@ def debug_pricing_periods(pricing_rules):
         currency = rule["price"]["currency"]
         print(f"   {i+1}. {time_period['start']}-{time_period['end']}: {currency}{price:.4f}")
 
+def display_charging_fee(plan_options, display, fee_label="Charging Fee"):
+    """
+    Display charging fee information for usage-based pricing
+    
+    Args:
+        plan_options: The plan options data containing pricing tiers
+        display: The display object to show information on
+        fee_label: The label to show for the fee (default: "Charging Fee")
+        
+    Returns:
+        bool: True if successfully displayed, False otherwise
+    """
+    if not plan_options or not display:
+        return False
+        
+    if "priceTiers" not in plan_options or len(plan_options["priceTiers"]) == 0:
+        print("No priceTiers found in plan options")
+        return False
+    
+    price_tiers = plan_options["priceTiers"]
+    quantity_type = plan_options.get("quantityType", "SECOND")
+    
+    # Use the last tier's price (highest quantity tier)
+    if price_tiers:
+        price_amount = price_tiers[-1]["price"]
+    else:
+        price_amount = 0.0
+    
+    print(f"🔋 Charging Fee: €{price_amount:.4f}/{quantity_type.lower()}")
+    
+    # Display without time period since it's usage-based
+    display.show_pricing_info(fee_label, None, None, price_amount, quantity_type)
+    return True
+
+def display_sequential_pricing(all_plan_options, display):
+    """
+    Display blocking fee for 3 seconds, then charging costs
+    
+    Args:
+        all_plan_options: List of all plan options
+        display: The display object to show information on
+    """
+    blocking_fee_option = None
+    charging_fee_option = None
+    
+    # Find both blocking and charging options
+    for option_ident, plan_options in all_plan_options:
+        option_name = plan_options.get("optionName", "").lower()
+        name = plan_options.get("name", "").lower()
+        
+        # Check if this is a blocking/time-based option
+        if any(keyword in option_name or keyword in name for keyword in ["block", "blocking"]):
+            if "pricingGroups" in plan_options:
+                blocking_fee_option = (option_ident, plan_options)
+                print(f"Found blocking fee option: {option_ident} ({plan_options.get('optionName', 'Unknown')})")
+        
+        # Check if this is a charging/usage-based option
+        elif any(keyword in option_name or keyword in name for keyword in ["charging"]):
+            if "priceTiers" in plan_options:
+                charging_fee_option = (option_ident, plan_options)
+                print(f"Found charging fee option: {option_ident} ({plan_options.get('optionName', 'Unknown')})")
+    
+    # Display blocking fee first for 3 seconds
+    if blocking_fee_option and display:
+        option_ident, plan_options = blocking_fee_option
+        print("📱 Displaying blocking fee for 3 seconds...")
+        success = display_time_based_blocking_fee(plan_options, display)
+        if success:
+            time.sleep(3)
+        else:
+            print("Failed to display blocking fee")
+    
+    # Then display charging costs
+    if charging_fee_option and display:
+        option_ident, plan_options = charging_fee_option
+        print("📱 Displaying charging costs...")
+        success = display_charging_fee(plan_options, display)
+        if not success:
+            print("Failed to display charging costs")
+    elif not charging_fee_option:
+        print("No charging fee option found")
+
 def display_time_based_blocking_fee(plan_options, display, fee_label="Blocking Fee"):
     """
     Display the appropriate time-based fee based on current time
@@ -464,46 +546,9 @@ def set_charging_state(customer_info):
                 all_stored_plan_options = all_plan_options.copy()
                 print(f"📝 Stored {len(all_stored_plan_options)} plan options for cost calculation")
 
-                # Find and display the blocking fee
+                # Display blocking fee for 3 seconds, then charging costs
                 if all_plan_options and display:
-                    blocking_fee_option = None
-                    
-                    # Look for the blocking fee option by name patterns
-                    for option_ident, plan_options in all_plan_options:
-                        option_name = plan_options.get("optionName", "").lower()
-                        name = plan_options.get("name", "").lower()
-                        
-                        # Check if this is a blocking/time-based option
-                        if any(keyword in option_name or keyword in name for keyword in ["block", "blocking", "time"]):
-                            if "pricingGroups" in plan_options:
-                                blocking_fee_option = (option_ident, plan_options)
-                                print(f"Found blocking fee option: {option_ident} ({plan_options.get('optionName', 'Unknown')})")
-                                break
-                    
-                    if blocking_fee_option:
-                        option_ident, plan_options = blocking_fee_option
-                        
-                        # Store plan options globally for cost calculation
-                        current_plan_options = plan_options
-                        
-                        # Use the new time-based display function
-                        success = display_time_based_blocking_fee(plan_options, display)
-                        if not success:
-                            print("Failed to display time-based blocking fee")
-                    else:
-                        print("No blocking fee option found, checking for other displayable options...")
-                        
-                        # Fallback: try to display any option with pricingGroups using time-based logic
-                        for option_ident, plan_options in all_plan_options:
-                            if "pricingGroups" in plan_options:
-                                print(f"Displaying pricing from fallback option: {option_ident}")
-                                
-                                # Store plan options globally for cost calculation
-                                current_plan_options = plan_options
-                                
-                                success = display_time_based_blocking_fee(plan_options, display, "Service Fee")
-                                if success:
-                                    break
+                    display_sequential_pricing(all_plan_options, display)
 
 def toggle_relay():
     global charging_active
