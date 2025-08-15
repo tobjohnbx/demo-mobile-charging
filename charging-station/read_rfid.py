@@ -592,9 +592,8 @@ try:
                     time.sleep(2)
                     display.show_welcome_message()
                 continue  # Skip processing if no customer info found
-
-            set_charging_state(customer_info)
             toggle_relay()
+            set_charging_state(customer_info)
             print("-" * 30)  # Add separator between reads
             print("Hold a tag near the reader...")
 
