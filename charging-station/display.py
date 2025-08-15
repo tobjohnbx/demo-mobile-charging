@@ -84,7 +84,7 @@ class ChargingDisplay:
         if amount == 0.0000:
             price_text = "FREE"
         else:
-            price_text = f"€{amount:.3f}/{short_quantity}"
+            price_text = f"€{amount:.2f}/{short_quantity}"
 
         time_period = f"{start_time}-{end_time}"
 
