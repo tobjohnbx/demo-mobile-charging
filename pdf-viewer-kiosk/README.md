@@ -27,7 +27,7 @@ Server für Messebetrieb: nimmt `customerIdent` per POST an, wartet asynchron au
 1. Python 3.10+
 2. Projekt entpacken, dann:
    ```bash
-   cd nitrobox_pdf_server
+   cd pdf-viewer-kiosk
    python -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    pip install -r requirements.txt
