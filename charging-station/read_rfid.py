@@ -29,8 +29,21 @@ from pricing_calculator import (
 def button_callback(channel):
     print("Button pressed on channel", channel)
 
+# Clean up any previous GPIO state
+try:
+    GPIO.cleanup()
+except:
+    pass
+
 # Use BCM pin numbering
 GPIO.setmode(GPIO.BCM)
+
+# Clean up any existing edge detection on pin 14 first
+try:
+    GPIO.remove_event_detect(14)
+except:
+    pass  # Ignore if no edge detection was configured
+
 GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.add_event_detect(14, GPIO.FALLING, callback=button_callback, bouncetime=200)
 
