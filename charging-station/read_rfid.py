@@ -187,6 +187,7 @@ def set_charging_state(customer_info):
                         global pricing_display_start, pricing_display_active
                         pricing_display_start = time.time()
                         pricing_display_active = True
+                        print(f"DEBUG: Timer variables set - start: {pricing_display_start}, active: {pricing_display_active}")
 
                         return  # Exit early to avoid overriding the pricing display
 
@@ -202,6 +203,9 @@ try:
     while True:
         tag_id, text = read_rfid()
         current_time = time.time()
+        
+        # DEBUG: Check if we're even getting to this point
+        print(f"DEBUG: Loop iteration - tag_id: {tag_id}, pricing_active: {pricing_display_active}")
         
         # Check if pricing display timer has expired (do this every loop)
         if pricing_display_active:
