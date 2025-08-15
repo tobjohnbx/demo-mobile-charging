@@ -1,7 +1,17 @@
-import asyncio
-from .request_inform_partner_charging import request_partner_article
-from ..request_bearer_token import fetch_bearer_token
-from ..request_get_contract import get_nitrobox_contract
+import sys
+import os
+
+# Add the parent directory to sys.path to enable imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+# Import from same directory
+import request_inform_partner_charging
+request_partner_article = request_inform_partner_charging.request_partner_article
+from request_bearer_token import fetch_bearer_token
+from request_get_contract import get_nitrobox_contract
 
 def get_contract_for_customer(customer_info):
     """
