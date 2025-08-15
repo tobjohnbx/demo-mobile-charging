@@ -5,6 +5,7 @@ import requests
 import json
 import os
 import sys
+import asyncio
 from datetime import datetime, timedelta
 from mfrc522 import SimpleMFRC522
 
@@ -17,6 +18,8 @@ from request_bearer_token import fetch_bearer_token
 from request_get_plan_options import get_nitrobox_plan_options
 from request_get_contract_details import get_option_idents_from_contract
 from rfid_mapping import get_customer_info
+from async_event_emitter import AsyncEventEmitter
+from partner.inform_partner import inform_partner
 
 
 # Use BCM pin numbering
@@ -105,6 +108,16 @@ def set_charging_state(customer_info):
         # Ending charging session
         charging_end_time = datetime.now()
         print("Stop charging.")
+        
+        # Emit charging_finished event to inform partner
+        try:
+            if 'event_emitter' in globals():
+                asyncio.run(event_emitter.emit("charging_finished", 
+                                              tag_id=last_tag_id, 
+                                              duration_minutes=(charging_end_time - charging_session_start).total_seconds() / 60,
+                                              customer_info=customer_info))
+        except Exception as e:
+            print(f"Warning: Failed to emit charging_finished event: {e}")
         
         # Update display
         if display:
@@ -198,6 +211,12 @@ def toggle_relay():
 
 try:
     print("Hold a tag near the reader...")
+    
+    # Set up event emitter and register partner notification
+    global event_emitter
+    event_emitter = AsyncEventEmitter()
+    event_emitter.on("charging_finished", inform_partner)
+    
     last_charging_display_update = 0
 
     while True:
