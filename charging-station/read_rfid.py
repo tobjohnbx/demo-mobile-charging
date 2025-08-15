@@ -180,7 +180,6 @@ def set_charging_state(customer_info):
                     display.show_welcome_message()
 
         charging_active = False
-        toggle_relay()
         charging_session_start = None
         current_plan_options = None  # Clear plan options when session ends
         all_stored_plan_options = []  # Clear all plan options when session ends
@@ -189,7 +188,6 @@ def set_charging_state(customer_info):
         charging_session_start = datetime.now()
         print(f"Start charging at {charging_session_start.strftime('%Y-%m-%d %H:%M:%S')}")
         charging_active = True
-        toggle_relay()
 
         
         # Emit charging_started event to inform partner
@@ -244,10 +242,20 @@ def set_charging_state(customer_info):
                 if all_plan_options and display:
                     display_sequential_pricing(all_plan_options, display)
 
-def toggle_relay():
-    global charging_active
-    print("Toggling relay")
-    GPIO.output(RELAY_PIN, GPIO.HIGH if charging_active else GPIO.LOW)
+async def toggle_relay_listener(event_name, **kwargs):
+    """
+    Async event listener to toggle relay based on charging events
+    """
+    if event_name == "charging_started":
+        print("🔌 Turning relay ON (charging started)")
+        GPIO.output(RELAY_PIN, GPIO.HIGH)
+    elif event_name == "charging_finished":
+        print("🔌 Turning relay OFF (charging finished)")
+        GPIO.output(RELAY_PIN, GPIO.LOW)
+    else:
+        print(f"⚠️  Unknown event for relay control: {event_name}")
+    
+    # kwargs may contain tag_id, customer_info, duration_minutes etc. but not needed for relay control
 
 try:
     print("Hold a tag near the reader...")
@@ -258,6 +266,9 @@ try:
     event_emitter.on("charging_started", inform_partner_charging_started)
     event_emitter.on("charging_finished", inform_partner)
     event_emitter.on("charging_finished", inform_pdf_service)
+    # Register async relay control listener
+    event_emitter.on("charging_started", toggle_relay_listener)
+    event_emitter.on("charging_finished", toggle_relay_listener)
 
     while True:
         tag_id, text = read_rfid()
