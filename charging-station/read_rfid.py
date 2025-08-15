@@ -32,6 +32,7 @@ charging_active = False
 charging_session_start = None
 current_charging_rate = None  # Store the current pricing rate per minute
 current_plan_options = None  # Store the plan options for cost calculation
+all_stored_plan_options = []  # Store all plan options for total cost calculation
 
 # Setup for LED
 RELAY_PIN = 17
@@ -142,61 +143,68 @@ def get_current_time_based_pricing(pricing_rules):
     
     return None
 
-def calculate_charging_cost(start_time, end_time, plan_options):
+def calculate_single_plan_cost(start_time, end_time, plan_options, plan_name):
     """
-    Calculate the actual charging cost based on time periods and pricing rules
+    Calculate cost for a single plan option
     
     Args:
         start_time: datetime when charging started
         end_time: datetime when charging ended  
         plan_options: The plan options containing pricing rules
+        plan_name: Name of the plan for logging
         
     Returns:
-        float: Total cost for the charging session
+        float: Cost for this plan option
     """
-    if not plan_options or "pricingGroups" not in plan_options:
-        print("⚠️  No pricing groups available, cannot calculate cost")
+    if not plan_options:
         return 0.0
-    
-    pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
-    quantity_type = plan_options.get("quantityType", "MINUTE")
-    
-    # For now, use a simple approach: find the pricing rule that was active during charging
-    # This could be enhanced to handle sessions that span multiple pricing periods
-    
-    # Use the pricing that was active when charging started
-    temp_datetime = start_time
-    temp_time = temp_datetime.time()
-    temp_hour = temp_time.hour
-    temp_minute = temp_time.minute
-    temp_total_minutes = temp_hour * 60 + temp_minute
-    
-    # Find matching pricing rule for start time
-    for rule in pricing_rules:
-        time_period = rule["criteria"]["timePeriod"]
-        start_str = time_period["start"]
-        end_str = time_period["end"]
         
-        # Parse start and end times
-        rule_start_hour, rule_start_minute = map(int, start_str.split(":")[0:2])
-        rule_end_hour, rule_end_minute = map(int, end_str.split(":")[0:2])
+    # Handle different plan option structures
+    if "pricingGroups" in plan_options:
+        # Time-based pricing (blocking-time)
+        pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
+        quantity_type = plan_options.get("quantityType", "MINUTE")
         
-        rule_start_total_minutes = rule_start_hour * 60 + rule_start_minute
-        rule_end_total_minutes = rule_end_hour * 60 + rule_end_minute
+        # Find pricing rule active during charging start
+        temp_time = start_time.time()
+        temp_total_minutes = temp_time.hour * 60 + temp_time.minute
         
-        # Check if start time falls within this period
-        if rule_start_total_minutes <= rule_end_total_minutes:
-            # Normal period
-            if rule_start_total_minutes <= temp_total_minutes < rule_end_total_minutes:
-                price_per_unit = rule["price"]["amount"]
-                break
+        price_per_unit = 0.0
+        for rule in pricing_rules:
+            time_period = rule["criteria"]["timePeriod"]
+            start_str = time_period["start"]
+            end_str = time_period["end"]
+            
+            rule_start_hour, rule_start_minute = map(int, start_str.split(":")[0:2])
+            rule_end_hour, rule_end_minute = map(int, end_str.split(":")[0:2])
+            
+            rule_start_total_minutes = rule_start_hour * 60 + rule_start_minute
+            rule_end_total_minutes = rule_end_hour * 60 + rule_end_minute
+            
+            if rule_start_total_minutes <= rule_end_total_minutes:
+                # Normal period
+                if rule_start_total_minutes <= temp_total_minutes < rule_end_total_minutes:
+                    price_per_unit = rule["price"]["amount"]
+                    break
+            else:
+                # Overnight period
+                if temp_total_minutes >= rule_start_total_minutes or temp_total_minutes < rule_end_total_minutes:
+                    price_per_unit = rule["price"]["amount"]
+                    break
+                    
+    elif "priceTiers" in plan_options:
+        # Usage-based pricing (charging-time)
+        price_tiers = plan_options["priceTiers"]
+        quantity_type = plan_options.get("quantityType", "SECOND")
+        
+        # For now, use the last tier's price (highest quantity tier)
+        # This could be enhanced to handle complex tier logic
+        if price_tiers:
+            price_per_unit = price_tiers[-1]["price"]
         else:
-            # Overnight period
-            if temp_total_minutes >= rule_start_total_minutes or temp_total_minutes < rule_end_total_minutes:
-                price_per_unit = rule["price"]["amount"]
-                break
+            price_per_unit = 0.0
     else:
-        print("⚠️  No matching pricing rule found for charging start time")
+        print(f"⚠️  Unknown plan structure for {plan_name}")
         return 0.0
     
     # Calculate duration based on quantity type
@@ -209,14 +217,46 @@ def calculate_charging_cost(start_time, end_time, plan_options):
     elif quantity_type.upper() == "HOUR":
         duration_units = duration_seconds / 3600
     else:
-        print(f"⚠️  Unknown quantity type: {quantity_type}, using minutes")
-        duration_units = duration_seconds / 60
+        print(f"⚠️  Unknown quantity type: {quantity_type}, using seconds")
+        duration_units = duration_seconds
     
-    total_cost = duration_units * price_per_unit
+    cost = duration_units * price_per_unit
     
-    print("💰 Cost calculation:")
+    print(f"💰 {plan_name} cost calculation:")
     print(f"   Duration: {duration_units:.2f} {quantity_type.lower()}")
     print(f"   Rate: €{price_per_unit:.4f}/{quantity_type.lower()}")
+    print(f"   Cost: €{cost:.4f}")
+    
+    return cost
+
+def calculate_total_charging_cost(start_time, end_time, all_plan_options):
+    """
+    Calculate total charging cost including both blocking-time and charging-time
+    
+    Args:
+        start_time: datetime when charging started
+        end_time: datetime when charging ended  
+        all_plan_options: List of all plan options
+        
+    Returns:
+        float: Total cost for the charging session
+    """
+    blocking_cost = 0.0
+    charging_cost = 0.0
+    
+    for _, plan_options in all_plan_options:
+        option_name = plan_options.get("optionName", "").lower()
+        
+        if "blocking" in option_name or "blocking-time" in option_name:
+            blocking_cost = calculate_single_plan_cost(start_time, end_time, plan_options, "Blocking Fee")
+        elif "charging" in option_name or "charging-time" in option_name:
+            charging_cost = calculate_single_plan_cost(start_time, end_time, plan_options, "Charging Fee")
+    
+    total_cost = blocking_cost + charging_cost
+    
+    print("📊 Total Cost Summary:")
+    print(f"   Blocking Fee: €{blocking_cost:.4f}")
+    print(f"   Charging Fee: €{charging_cost:.4f}")
     print(f"   Total: €{total_cost:.4f}")
     
     return total_cost
@@ -270,14 +310,9 @@ def display_time_based_blocking_fee(plan_options, display, fee_label="Blocking F
         print(f"✅ Found matching time period: {period_name} ({start_time}-{end_time})")
         print(f"💰 Using exact price from matching period: €{price_amount:.4f}/{quantity_type.lower()}")
         
-        # Create descriptive heading that shows both the fee type and period
-        if price_amount == 0.0:
-            heading = f"{fee_label} ({period_name})"
-        else:
-            heading = f"{fee_label} ({period_name})"
-        
         # Display using the exact price from the matching time period
-        display.show_pricing_info(heading, start_time, end_time, price_amount, quantity_type)
+        # Use only the fee label without period descriptors
+        display.show_pricing_info(fee_label, start_time, end_time, price_amount, quantity_type)
         return True
     else:
         print("Current time does not match any pricing period")
@@ -305,7 +340,7 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state(customer_info):
-    global charging_active, charging_session_start, current_plan_options
+    global charging_active, charging_session_start, current_plan_options, all_stored_plan_options
     
     if charging_active:
         # Ending charging session
@@ -326,9 +361,9 @@ def set_charging_state(customer_info):
         if display and charging_session_start:
             duration_minutes = (charging_end_time - charging_session_start).total_seconds() / 60
             
-            # Calculate actual cost using pricing from API response
-            if current_plan_options:
-                cost = calculate_charging_cost(charging_session_start, charging_end_time, current_plan_options)
+            # Calculate total cost from both blocking-time and charging-time plan options
+            if all_stored_plan_options:
+                cost = calculate_total_charging_cost(charging_session_start, charging_end_time, all_stored_plan_options)
             else:
                 print("⚠️  No plan options available, cannot calculate accurate cost")
                 cost = 0.0
@@ -347,6 +382,7 @@ def set_charging_state(customer_info):
                 charging_active = False
                 charging_session_start = None
                 current_plan_options = None
+                all_stored_plan_options = []
                 return
 
             # Create usage record in Nitrobox
@@ -381,6 +417,7 @@ def set_charging_state(customer_info):
         charging_active = False
         charging_session_start = None
         current_plan_options = None  # Clear plan options when session ends
+        all_stored_plan_options = []  # Clear all plan options when session ends
     else:
         # Starting charging session
         charging_session_start = datetime.now()
@@ -422,6 +459,10 @@ def set_charging_state(customer_info):
                         except Exception as e:
                             option_ident = future_to_ident[future]
                             print(f"❌ Exception retrieving plan options for {option_ident}: {e}")
+                
+                # Store all plan options globally for total cost calculation
+                all_stored_plan_options = all_plan_options.copy()
+                print(f"📝 Stored {len(all_stored_plan_options)} plan options for cost calculation")
 
                 # Find and display the blocking fee
                 if all_plan_options and display:
