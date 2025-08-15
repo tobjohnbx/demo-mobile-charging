@@ -6,14 +6,14 @@ Wants=nitrobox-api.service
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=%h/nitrobox_pdf_server
+WorkingDirectory=%h/pdf-viewer-kiosk
 Environment=DISPLAY=:0
-Environment=DOWNLOAD_DIR=%h/nitrobox_pdf_server/downloads
+Environment=DOWNLOAD_DIR=%h/pdf-viewer-kiosk/downloads
 # Bildschirm-Blanking ausschalten
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s off'
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset -dpms'
 ExecStartPre=/usr/bin/env bash -lc 'export DISPLAY=:0; xset s noblank'
-ExecStart=/usr/bin/python3 %h/nitrobox_pdf_server/kiosk_latest_pdf.py --viewer evince
+ExecStart=/usr/bin/python3 %h/pdf-viewer-kiosk/kiosk_latest_pdf.py --viewer evince
 Restart=always
 RestartSec=3
 
