@@ -188,6 +188,7 @@ def set_charging_state(customer_info):
                         pricing_display_start = time.time()
                         pricing_display_active = True
                         print(f"DEBUG: Started pricing display timer at {pricing_display_start}")
+                        return  # Exit early to avoid overriding the pricing display
 
 def toggle_relay():
     global charging_active
