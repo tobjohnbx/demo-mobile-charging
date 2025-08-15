@@ -11,11 +11,35 @@ class ButtonDisplayController:
     """
     
     def __init__(self):
-        # GPIO Setup
-        GPIO.setmode(GPIO.BOARD)  # Verwende Board-Pin Nummerierung
+        # GPIO Setup - Prüfe aktuellen Modus und verwende ihn
+        try:
+            # Versuche den aktuellen Modus zu ermitteln
+            current_mode = GPIO.getmode()
+            if current_mode is None:
+                # Kein Modus gesetzt, verwende BCM (wie in read_rfid.py)
+                GPIO.setmode(GPIO.BCM)
+                self.use_bcm = True
+                self.BUTTON_PIN = 14  # GPIO 14 (BCM) entspricht Pin 8 (Board)
+            elif current_mode == GPIO.BCM:
+                # BCM Modus ist bereits gesetzt
+                self.use_bcm = True
+                self.BUTTON_PIN = 14  # GPIO 14 (BCM)
+            else:  # GPIO.BOARD
+                # Board Modus ist bereits gesetzt
+                self.use_bcm = False
+                self.BUTTON_PIN = 8  # Pin 8 (Board)
+                
+            print(f"GPIO Modus: {'BCM' if self.use_bcm else 'BOARD'}, Button Pin: {self.BUTTON_PIN}")
+                
+        except Exception as e:
+            print(f"GPIO Setup Fehler: {e}")
+            # Cleanup und neu versuchen
+            GPIO.cleanup()
+            GPIO.setmode(GPIO.BCM)
+            self.use_bcm = True
+            self.BUTTON_PIN = 14
         
-        # Button Setup (Pin 8 = GPIO 14, Pin 14 = GND)
-        self.BUTTON_PIN = 8
+        # Button Setup mit Pull-up Widerstand
         GPIO.setup(self.BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         
         # Display Setup (I2C Pins: Pin 3 = SDA, Pin 5 = SCL)
@@ -23,15 +47,17 @@ class ButtonDisplayController:
         try:
             self.i2c = busio.I2C(board.SCL, board.SDA)
             self.display = SSD1306_I2C(128, 64, self.i2c)
+            print("Display erfolgreich initialisiert")
         except Exception as e:
             print(f"Display-Initialisierung fehlgeschlagen: {e}")
             self.display = None
         
         # Fonts laden
         try:
-            self.font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
-            self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+            self.font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+            self.font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
         except OSError:
+            print("Standard-Fonts verwenden (TrueType-Fonts nicht gefunden)")
             self.font_large = ImageFont.load_default()
             self.font_small = ImageFont.load_default()
         
@@ -69,13 +95,24 @@ class ButtonDisplayController:
         for i, line in enumerate(text_lines):
             if i == 0:  # Erste Zeile größer
                 font = self.font_large
-                line_height = 25
+                line_height = 20
             else:
                 font = self.font_small
-                line_height = 17
+                line_height = 15
             
-            # Text zentrieren
-            text_width = draw.textsize(line, font=font)[0] if hasattr(draw, 'textsize') else len(line) * 8
+            # Text zentrieren (vereinfachte Methode)
+            try:
+                # Neuere PIL Versionen
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_width = bbox[2] - bbox[0]
+            except AttributeError:
+                # Ältere PIL Versionen
+                try:
+                    text_width = draw.textsize(line, font=font)[0]
+                except AttributeError:
+                    # Fallback
+                    text_width = len(line) * 8
+            
             x_position = max(0, (self.display.width - text_width) // 2)
             
             draw.text((x_position, y_position), line, font=font, fill=255)
@@ -126,6 +163,7 @@ class ButtonDisplayController:
     def run(self):
         """Hauptschleife"""
         print("Button-Display Controller gestartet...")
+        print(f"Button Pin: {self.BUTTON_PIN} ({'BCM' if self.use_bcm else 'BOARD'} Modus)")
         print("Drücke Ctrl+C zum Beenden")
         
         try:
@@ -140,11 +178,12 @@ class ButtonDisplayController:
             self.cleanup()
     
     def cleanup(self):
-        """Aufräumen beim Beenden"""
-        GPIO.cleanup()
+        """Aufräumen beim Beenden - GPIO nicht zurücksetzen wenn andere Scripts laufen"""
+        print("Programm wird beendet...")
         if self.display:
             self.clear_display()
-        print("GPIO und Display bereinigt")
+        # GPIO.cleanup() NICHT aufrufen, da andere Scripts möglicherweise noch laufen
+        print("Display bereinigt (GPIO bleibt für andere Scripts aktiv)")
 
 # Hauptprogramm
 if __name__ == "__main__":
