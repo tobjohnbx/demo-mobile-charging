@@ -99,7 +99,7 @@ def should_process_tag(tag_id):
     return False
 
 def set_charging_state(customer_info):
-    global charging_active, charging_session_start
+    global charging_active, charging_session_start, pricing_display_active, pricing_display_start
     
     if charging_active:
         # Ending charging session
@@ -156,7 +156,6 @@ def set_charging_state(customer_info):
         charging_session_start = None
         
         # Reset pricing display timer when charging stops
-        global pricing_display_active
         pricing_display_active = False
     else:
         # Starting charging session
@@ -188,7 +187,6 @@ def set_charging_state(customer_info):
                     if daytime_price is not None:
                         display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
                         # Start pricing display timer (non-blocking)
-                        global pricing_display_start, pricing_display_active
                         pricing_display_start = time.time()
                         pricing_display_active = True
                         return  # Exit early to avoid overriding the pricing display
