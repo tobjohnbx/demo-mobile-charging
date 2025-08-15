@@ -164,8 +164,18 @@ def set_charging_state():
             if option_idents:
                 plan_options = get_nitrobox_plan_options(option_idents[0], bearer_token)
                 if plan_options and display:
-                    #display.show_plan_options(plan_options)
-                    display.show_pricing_info("08:00", "22:00", plan_options["priceTiers"][1]["price"], plan_options["quantityType"])
+                    # Extract pricing from pricingGroups structure
+                    pricing_rules = plan_options["pricingGroups"][0]["pricingRules"]
+                    # Find the pricing rule for 08:00-22:00 (daytime pricing)
+                    daytime_price = None
+                    for rule in pricing_rules:
+                        time_period = rule["criteria"]["timePeriod"]
+                        if time_period["start"] == "08:00:00" and time_period["end"] == "22:00:00":
+                            daytime_price = rule["price"]["amount"]
+                            break
+                    
+                    if daytime_price is not None:
+                        display.show_pricing_info("08:00", "22:00", daytime_price, plan_options["quantityType"])
 
         # Update display
         if display:
