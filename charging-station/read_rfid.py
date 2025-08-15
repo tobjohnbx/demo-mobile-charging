@@ -227,6 +227,7 @@ try:
                 pricing_display_active = False
                 if display and charging_active:
                     display.show_charging_started(last_tag_id, charging_session_start)
+                    last_charging_display_update = current_time  # Reset timer for periodic updates
             
             # Update charging display periodically during active session
             if charging_active and display and not pricing_display_active and (current_time - last_charging_display_update) > 5:
