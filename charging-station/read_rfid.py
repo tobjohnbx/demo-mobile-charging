@@ -187,7 +187,7 @@ def set_charging_state(customer_info):
                         global pricing_display_start, pricing_display_active
                         pricing_display_start = time.time()
                         pricing_display_active = True
-                        print(f"DEBUG: Started pricing display timer at {pricing_display_start}")
+
                         return  # Exit early to avoid overriding the pricing display
 
 def toggle_relay():
@@ -204,13 +204,16 @@ try:
         current_time = time.time()
         
         # Check if pricing display timer has expired (do this every loop)
-        if pricing_display_active and (current_time - pricing_display_start) >= PRICING_DISPLAY_DURATION:
-            print("DEBUG: Pricing display timer expired, switching to charging display")
-            pricing_display_active = False
-            if display and charging_active:
-                print("DEBUG: Showing charging started display")
-                display.show_charging_started(last_tag_id, charging_session_start)
-                last_charging_display_update = current_time  # Reset timer for periodic updates
+        if pricing_display_active:
+            elapsed = current_time - pricing_display_start
+            print(f"DEBUG: Timer check - elapsed: {elapsed:.1f}s, active: {charging_active}")
+            if elapsed >= PRICING_DISPLAY_DURATION:
+                print("DEBUG: Timer expired, switching display")
+                pricing_display_active = False
+                if display and charging_active:
+                    print("DEBUG: Showing charging started")
+                    display.show_charging_started(last_tag_id, charging_session_start)
+                    last_charging_display_update = current_time  # Reset timer for periodic updates
 
         if should_process_tag(tag_id):
             print(f"Tag ID: {tag_id}")
@@ -246,7 +249,6 @@ try:
         else:
             # Update charging display periodically during active session (only when no tag processing)
             if charging_active and display and not pricing_display_active and (current_time - last_charging_display_update) > 5:
-                print("DEBUG: Updating to charging active display")
                 duration_minutes = (datetime.now() - charging_session_start).total_seconds() / 60
                 display.show_charging_active(charging_session_start, duration_minutes)
                 last_charging_display_update = current_time
