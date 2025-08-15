@@ -55,13 +55,13 @@ class ChargingDisplay:
 
         self._show_image(image)
 
-    def show_pricing_info(self, heading, start_time, end_time, amount=0.1000, quantity_type="MINUTE"):
+    def show_pricing_info(self, heading, start_time, end_time, amount, quantity_type="MINUTE"):
         """Show pricing information based on provided parameters
 
         Args:
             start_time: Start time of pricing period (e.g., "08:00")
             end_time: End time of pricing period (e.g., "22:00")
-            amount: Price amount (0.0000 displays as FREE)
+            amount: Price amount (0.0 displays as FREE)
             quantity_type: Quantity type (e.g., "MINUTE", "SECOND", "HOUR")
         """
         image = self._create_image()
@@ -80,7 +80,7 @@ class ChargingDisplay:
         short_quantity = quantity_mapping.get(quantity_type.upper(), quantity_type.lower())
 
         # Determine price display text
-        if amount == 0.0000:
+        if amount == 0.0:
             price_text = "FREE"
         else:
             price_text = f"€{amount:.2f}/{short_quantity}"

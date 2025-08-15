@@ -71,17 +71,17 @@ class DisplayTester:
                 # 2. Pricing Information
                 print("2️⃣  Pricing Information - Different Quantity Types (6s)")
                 # Example with day rate per minute
-                self.display.show_pricing_info("08:00", "22:00", 0.1000, "MINUTE")
+                self.display.show_pricing_info("Day Rate", "08:00", "22:00", 0.1000, "MINUTE")
                 time.sleep(2)
 
                 # Example with pricing per second
                 print("2️⃣b Per Second Pricing (2s)")
-                self.display.show_pricing_info("06:00", "18:00", 0.0017, "SECOND")
+                self.display.show_pricing_info("Per Second", "06:00", "18:00", 0.0017, "SECOND")
                 time.sleep(2)
 
                 # Example with night rate (FREE)
                 print("2️⃣c Night Rate - FREE (2s)")
-                self.display.show_pricing_info("22:00", "08:00", 0.0000, "MINUTE")
+                self.display.show_pricing_info("Night Rate", "22:00", "08:00", 0.0000, "MINUTE")
                 time.sleep(2)
 
                 # 4. Charging Started
