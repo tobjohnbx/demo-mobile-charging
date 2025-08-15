@@ -187,8 +187,6 @@ def set_charging_state(customer_info):
                         global pricing_display_start, pricing_display_active
                         pricing_display_start = time.time()
                         pricing_display_active = True
-                        print(f"DEBUG: Timer variables set - start: {pricing_display_start}, active: {pricing_display_active}")
-
                         return  # Exit early to avoid overriding the pricing display
 
 def toggle_relay():
@@ -204,22 +202,17 @@ try:
         tag_id, text = read_rfid()
         current_time = time.time()
         
-        # DEBUG: Check if we're even getting to this point
-        print(f"DEBUG: Loop iteration - tag_id: {tag_id}, pricing_active: {pricing_display_active}")
-        
         # Check if pricing display timer has expired (do this every loop)
         if pricing_display_active:
             elapsed = current_time - pricing_display_start
-            print(f"DEBUG: Timer check - elapsed: {elapsed:.1f}s, active: {charging_active}")
             if elapsed >= PRICING_DISPLAY_DURATION:
-                print("DEBUG: Timer expired, switching display")
                 pricing_display_active = False
                 if display and charging_active:
-                    print("DEBUG: Showing charging started")
                     display.show_charging_started(last_tag_id, charging_session_start)
                     last_charging_display_update = current_time  # Reset timer for periodic updates
 
-        if should_process_tag(tag_id):
+        # Don't process tags during pricing display to avoid interruption
+        if should_process_tag(tag_id) and not pricing_display_active:
             print(f"Tag ID: {tag_id}")
 
             # Show card detected on display
